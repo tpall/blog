@@ -243,7 +243,7 @@ merged_ds %<>% mutate(pubdiff = PDAT-PubDate)
 ```
 
 Nice! In accordance with journal data sharing policies, majority of datasets are made public almost synchronously with article publication date (Figure \@ref(fig:pubdiff)).
-```{r pubdiff, fig.cap="Length of timeperiod between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of timeperiods. Right, scatterplot of dataset versus article publication dates."}
+```{r pubdiff, fig.cap="Time periods between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of time periods. Right, scatterplot of dataset versus article publication dates."}
 library(grid)
 library(gridExtra)
 h <- ggplot(merged_ds, aes(pubdiff)) +
