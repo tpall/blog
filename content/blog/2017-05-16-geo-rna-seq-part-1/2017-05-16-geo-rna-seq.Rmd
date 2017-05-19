@@ -54,7 +54,7 @@ s <- 1/3
 reps <- 1000
 true_power <- power.t.test(n = n, m, s)$power
 tab <- table(replicate(reps, pow_fun(n,m,s)))/reps
-caption <- paste0("Statistical power cannot be estimated retrospectively. One sample t-tests were simulated at predetermined power = ", round(true_power, 2), " (true power). Power calculated for each sample was binned whether it falled within +/- 10% range of true power or not. As can be seen, in ", round(tab[1], 2)*100,"% of cases retrospective power misses the margin.")
+caption <- paste0("Statistical power cannot be estimated retrospectively. One sample t-tests were simulated at predetermined power = ", round(true_power, 2), " (true power). Statistical power, calculated for each sample, was classified into two bins based on whether it was within +/- 10% range of true power or not. As can be seen, in ", round(tab[1], 2)*100,"% of cases retrospective power misses the margin.")
 library(ggplot2)
 ggplot(as.data.frame(tab), aes(Var1, Freq)) + 
   geom_bar(stat = "identity") + 
