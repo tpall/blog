@@ -8,7 +8,7 @@ layoutdir = "layouts"
 publishdir = "public"
 author = "Taavi Päll"
 title = "Working on my analysis development skills"
-disqusshortname = "www-credibleinterval-ee"
+#disqusshortname = "www-credibleinterval-ee"
 pluralizelisttitles = false
 
 [permalinks]
