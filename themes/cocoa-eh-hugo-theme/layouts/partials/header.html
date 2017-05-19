@@ -17,7 +17,7 @@
             <nav>
                 <ul>
                     {{ if ne (len (where .Site.RegularPages "Section" "blog")) 0 }}
-                        <a href="{{ .Site.BaseURL }}/blog/"><li>Blog</li></a>
+                        <a href="{{ .Site.BaseURL }}blog/"><li>Blog</li></a>
                     {{ end }}
                     {{ range .Site.Sections }}
                         {{ range first 1 (where .Pages "Section" "ne" "")}}
