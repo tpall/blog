@@ -1,0 +1,288 @@
+---
+title: "RNA-seq experiments quality, part 1: quering GEO database from R using E-Utils"
+author: "Taavi Päll, Ülo Maiväli"
+date: "2017-05-17"
+categories: ["R"]
+tags: ["RNA-seq", "NCBI GEO", "P-value"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, message=FALSE, dev='svg')
+```
+
+_This the first post in series describing the analysis of P-value histograms from RNA sequencing experiments uploaded into NCBI GEO database as supplemental data._
+
+## Introduction
+This is about replication. 
+Poor reproducibility[^1] and replicability[^2] have become major concerns in experimental biomedical science. 
+Reproducibility of a study is mostly determined by the availability of the original data and whether analyses are described in a sufficient detail.
+
+> Reproducibility of a study is mostly determined by the availability of the original data and whether analyses are descibed in a sufficient detail.
+
+No new data are generated.
+Reproducing a study is something that everyone should do when reading a research article really carefully and trying to understand how authors reached to their conclusions. 
+It's a function of a peer review, basically.
+
+In contrast, a replication study generates new data by following the original experimental procedures.
+
+> A replication study generates new data by following the original experimental procedures.
+
+Therefore, sufficiently detailed description of the methods of the study is a prerequisite for successful replication.
+Replication study introduces new evidence to science and thus has the potential to change the conclusions of the original study.
+
+There are two major obstacles in the replication business: (1) the high cost of actually repeating experiments and the willingness to pay this cost is greatly reduced by (2) the lack of consensus on how to measure replicability. 
+This makes it desirable to first estimate _in silico_, which studies are worth replicating in the lab, and how to best replicate them. 
+
+The uncertainty in identifying true discoveries remains in case reproduction and replication and is caused by random nature of P-values calculated for our experimental samples. 
+In the long run, randomness can be controlled by assuming false discovery rate (FDR).
+As an other arm, trust into obtained P-value can be increased by estimating prospectively the probability of success, the power of detecting true effects.
+Statistical power is used to set the sensitivity of the experimental system in the context of many consecutive measurements.  
+However, power is mostly not estimated or reported in published articles and the already conducted study cannot be used to estimate its power (Figure \@ref(fig:simulate-power)).
+
+```{r simulate-power, fig.cap=caption, echo=FALSE}
+set.seed(20170518)
+pow_fun <- function(n, m, s){
+  true_power <- power.t.test(n = n, m, s)$power
+  samp <- rnorm(n,m,s)
+  power <- power.t.test(n, mean(samp), sd(samp))$power
+  goodrange <- true_power + c(-0.1, 0.1)
+  (goodrange[1] <= power & power <= goodrange[2])
+}
+n <- 3
+m <- 1
+s <- 1/3
+reps <- 1000
+true_power <- power.t.test(n = n, m, s)$power
+tab <- table(replicate(reps, pow_fun(n,m,s)))/reps
+caption <- paste0("Statistical power cannot be estimated retrospectively. One sample t-tests were simulated at predetermined power = ", round(true_power, 2), " (true power). Power calculated for each sample was binned whether it falled within +/- 10% range of true power or not. As can be seen, in ", round(tab[1], 2)*100,"% of cases retrospective power misses the margin.")
+library(ggplot2)
+ggplot(as.data.frame(tab), aes(Var1, Freq)) + 
+  geom_bar(stat = "identity") + 
+  ggtitle("Retrospective power within +/- 10% range of true power") +
+  theme(axis.title.x = element_blank())
+```
+
+Therefore, reported single P-values tell us nothing about the probability of null hypothesis or the quality of experiment design and replicability. 
+
+Fortunately, in case of _omics_ experiments, where large amounts of P-values are generated in parallel, it is possible to judge the quality of experiment and its potential replicability just by [looking at the shape of the P-value histogram](http://varianceexplained.org/statistics/interpreting-pvalue-histogram/).
+In addition, the proportion of true null effects can be calculated from the shape of P-value histogram.
+When we know the number of true null effects, then we know the number of true non-null effects, and then the power can be calculated.  
+
+RNA sequencing (RNA-seq) is usually done in a massively parallel way, testing for differential expression between experiment and control conditions of thousands of RNA pairs. 
+This allows to check the quality of each RNA-seq experiment by examining the distribution of the P-values that were calculated by the original authors and were used by them to make inferences about differential expression of individual RNAs in their study.  
+When these P-values indicate a technically successful experiment, they can be further used to calculate the false discovery rate and assess the prospective power by using the proportion of true nulls, which together enable to analyse the replication potential of the study. 
+
+## Databases
+RNA-seq and other high-throughput experiments can be obtained from three sources storing data from high-throughput experiments: [NCBI GEO](https://www.ncbi.nlm.nih.gov/geo/), [DDBJ](http://www.ddbj.nig.ac.jp) and [ENA](https://www.ebi.ac.uk/ena).
+According to [Minimum Information about a high-throughput SEQuencing Experiment](http://fged.org/projects/minseqe/), one could expect to find also _"The 'final' processed (or summary) data for the set of assays in the study: the data on which the conclusions in the related publication are based, and descriptions of the data format"_ along with sequence read data and metadata deposited into databases.
+Most likely, these final processed data contain set of P-values which can be used for post-experiment quality control.
+We will going to use [NCBI GEO database](https://www.ncbi.nlm.nih.gov/gds/) as perhaps the most well-known source.
+
+## Query
+NCBI GEO database can be accessed from R via Bioconductor's package `GEOquery`.
+However, `GEOquery` assumes that you already know the IDs of entities that you want to download.
+We don't know, but we want them all. 
+For programmatic access, NCBI has Entrez Programming Utilities ([E-Utils](https://www.ncbi.nlm.nih.gov/books/NBK25501/)).
+Here we are going to use `ESearch` which provides a list of UIDs matching a text query and `ESummary` for downloading document summaries (DocSums) for a list of these UIDs.
+
+E-Utils can be used to construct HTTP request to NCBI server using `GET` verb from `httr` package.
+Let's say we are interested in total number of high throughput sequencing datasets in GEO database.
+We can use following example query specifying study type: 'expression profiling by high throughput sequencing[DataSet Type]' to get UIDs for RNA-seq experiments (mostly). 
+Response contains xml content where we can extract our UIDs:
+
+```{r query}
+library(tidyverse)
+library(magrittr) # %<>% and set_colnames()
+library(httr) # GET()
+library(xml2) # xml stuff
+
+query <- 'expression profiling by high throughput sequencing[DataSet Type]'
+
+# Function to submit request to NCBI
+get_GEO_ids <- function(query, database = "gds", retmax = 500, ...){
+  url <- "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+  qres <- GET(url, query = list(db = database, term = query, retmax = retmax, ...))
+  rescont <- content(qres)
+  rescont %>% xml_find_all(xpath = "//Id") %>% xml_text()
+}
+
+# Get Ids
+ids <- get_GEO_ids(query = query, retmax = 20000)
+
+head(ids)
+```
+
+In order to get all that's available, based on prior knowledge, I did set the maximum number of retrieved UIDs to 20000. This query retrieved us `r length(ids)` GEO Series UIDs.
+
+## Document summaries
+Now we can use UIDs to retrieve document summaries.
+Document summary contains GEO Accession number and bunch of other info, like series title and summary, dataset publication date, PubMed id when study has been published, used taxa, and platform id among others.
+Large query must be split into smaller pieces, otherwise the query will freeze. 
+Here I submit multiple queries with chunk size of 500.
+
+```{r docsums}
+# Function to document summaries for UIDs from NCBI
+get_docsums <- function(ids, database = "gds"){
+  url <- "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
+  
+  # Split UIDs into chunks of size max 500
+  chunkize <-  function(x, chunksize) {
+    split(x, ceiling(seq_along(x)/chunksize))
+  }
+  
+  UID_chunks <- chunkize(ids, 500)
+
+  get_qsums <- function(uid) {
+    GET(url, query = list(db = database, id = paste(uid, collapse = ",")))
+  }
+  
+  qsums <- lapply(UID_chunks, get_qsums) 
+  lapply(qsums, content)
+}
+
+# Get document summaries
+sumcont <- get_docsums(ids)
+
+# Number of chunks
+length(sumcont)
+```
+
+After downloading, data needs to be extracted from XML format for further processing:
+
+```{r extract-docsums}
+library(XML)
+extract_docsums <- function(xmldocument){
+  
+  d <-  xmlParse(xmldocument) %>% xmlRoot
+  
+  items <- d[1]$DocSum %>% 
+    xmlSApply(xmlGetAttr, name = "Name") %>% 
+    unlist() %>% 
+    c("Id",.) %>% 
+    unname()
+  
+  d %>% 
+    xmlSApply(. %>% getChildrenStrings) %>% 
+    t %>% 
+    as_data_frame %>% 
+    set_colnames(items)
+}
+
+ds <- sumcont %>% lapply(extract_docsums) %>% bind_rows()
+
+ds
+```
+
+Now the data needs to be summed up by the `PDAT` -- GEO publication date variable and are ready to be plotted.
+Sequencing for expression profiling has seriously taken off as the number of datasets in NCBI GEO is accumulating exponentially (Figure \@ref(fig:geocount)).
+
+```{r geocount, fig.cap="The number of RNA-seq series and associated primary publications submitted to NCBI GEO database grows exponentially."}
+library(lubridate)
+pdat <- ds %>% 
+  select(PDAT, PubMedIds) %>% 
+  mutate(pub=nchar(PubMedIds)!=0) %>% 
+  group_by(PDAT) %>% 
+  summarise(N = n(),
+            pub = sum(pub)) %>% 
+  mutate_at(vars(N, pub), cumsum)
+  
+pdat %<>% gather(key,value, -PDAT) 
+
+pdat %>% 
+  ggplot(aes(ymd(PDAT), value, linetype=key)) + 
+  geom_line() +
+  ylab("Number of GEO series") +
+  xlab("Date") +
+  scale_linetype_discrete(labels=c("GEO series","GEO series with\npublications")) +
+  theme(legend.position = c(.35, 0.8),
+        legend.background = element_blank(),
+        legend.title = element_blank())
+```
+
+## Publication of high-throughput expression data
+
+> How big is the time gap between publishing article and related GEO dataset and which journals publish most high-throughput sequencing papers.
+
+Let's look at the published high-throughput expression/sequencing papers. 
+How big is the time gap between publishing article and related GEO dataset and which journals publish most high-throughput sequencing papers.
+I got already dataset publication dates (`PDAT`), so I need to download article publication data from PubMed.
+To download articles summary data I use `PubmedIds` from GEO Series document summaries.
+```{r pmids, eval=FALSE}
+# Extract PubMed Ids
+pmid <- ds %>% filter(PubMedIds!="") %$% PubMedIds 
+
+# PubMed should be queried one-by-one
+pubmed_summary <- function(uid){
+  url <- "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
+  GET(url, query = list(db = "pubmed", id = uid))
+}
+
+# NB! This step takes time
+pubmed <- data_frame(PubMedIds = pmid) %>% 
+  mutate(docsums = map(pmid, ~{message(.x); pubmed_summary(.x)}))
+```
+
+```{r load-pubmed-data, echo=FALSE}
+load("2017-05-16-geo-rna-seq-pubmed-docsums.RData")
+```
+
+I extract info from downloaded summaries, convert into data.frame and join pubmed data with GEO data using `PubMedIds`:
+```{r munge-pubmed-data}
+# Extract document summaries
+pubmed_sums <- pubmed %>% mutate(docsums = map(docsums, ~try(extract_docsums(.x)), ))
+pubmed_sums %<>% 
+  filter(!map_lgl(docsums, ~inherits(.x,"try-error"))) %>% 
+  unnest
+# Merge with GEO doc summaries
+merged_ds <- left_join(select(pubmed_sums, -Id), select(ds, Id, Accession, PubMedIds, PDAT, GPL))
+# Parse dates into common format
+merged_ds <- mutate_at(merged_ds, vars(PubDate, PDAT), ymd) %>% 
+  select(Accession,PubMedIds,PubDate,PDAT,Source,LastAuthor,GPL)
+# Calculate differences
+merged_ds %<>% mutate(pubdiff = PDAT-PubDate)
+```
+
+Nice! In accordance with journal data sharing policies, majority of datasets are made public almost synchronously with article publication date (Figure \@ref(fig:pubdiff)).
+```{r pubdiff, fig.cap="Length of timeperiod between publication dates of GEO HT-sequencing dataset and article including the study. Left, distribution of timeperiods. Right, scatterplot of dataset versus article publication dates."}
+library(grid)
+library(gridExtra)
+h <- ggplot(merged_ds, aes(pubdiff)) +
+  geom_histogram(bins = 60) +
+  xlab("Time difference in days") +
+  ylab("Number of GEO Series") #+
+  # ggtitle("Timeperiod between article and GEO dataset publication dates")
+p <- ggplot(merged_ds, aes(PubDate, PDAT)) +
+  geom_point() +
+  xlab("Article publication date") +
+  ylab("Dataset publication date")
+ggp <- lapply(list(h, p), ggplotGrob)
+ggp <- arrangeGrob(grobs = ggp, ncol = 2)
+grid.draw(ggp)
+```
+
+Top journals publishing high-throughput sequencing data (Figure \@ref(fig:top-journals)). 
+Interestingly, PLosOne is one of the top publishers of these studies.
+When we get there, it would be interesting to see if there are any quality differences between studies published in Nature and PLoSOne or publications ending up in Nature Communications instead of Nature.
+```{r top-journals, fig.cap="Top 25 journals publishing high-throughput sequencing studies."}
+# Summarise studies by journal
+top <- select(merged_ds, Accession, Source) %>% 
+  group_by(Source) %>% 
+  summarise(N=n()) %>% 
+  arrange(desc(N))
+
+# Plot top25 publishers
+ggplot(top[1:25,], aes(Source, N)) + 
+  # geom_bar(stat = "identity") + 
+  geom_point() +
+  scale_x_discrete(limits = top$Source[1:25]) +
+  scale_y_continuous(limits = c(0, 1200)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5), 
+        axis.title.x = element_blank()) +
+  ylab("Number of articles")
+```
+
+This is it, my first post. 
+Next post will be about identifying, downloading and importing of supplemental files for GEO Accessions.
+
+[^1]: The inability of reproducing, by using the original data, the original data analysis exactly.
+[^2]: The inability of reproducing, by new experiments, the original data approximately.
