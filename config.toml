@@ -20,7 +20,7 @@ dateformfull = "Mon Jan 2 2006 15:04:05 MST"
 description = "Digging in molecular biomedicine data"
 copyright = "Copyright © 2017 Taavi Päll"
 logofile = "img/face.jpg"
-faviconfile = "img/face.jpg"
+faviconfile = "img/tp-logo.png"
 highlightjs = true
 progressively = true
 latestpostcount = 5
@@ -28,7 +28,7 @@ github = "tpall"
 email = "tapa741@gmail.com"
 linkedin = "palltaavi"
 twitter = "taavipall"
-#social_banner = "img/banner.png"
+social_banner = "img/tp-logo.png"
 posts_navigation = true
 
 [params.colors]

@@ -249,8 +249,8 @@ library(gridExtra)
 h <- ggplot(merged_ds, aes(pubdiff)) +
   geom_histogram(bins = 60) +
   xlab("Time difference in days") +
-  ylab("Number of GEO Series") #+
-  # ggtitle("Timeperiod between article and GEO dataset publication dates")
+  ylab("Number of GEO Series")
+
 p <- ggplot(merged_ds, aes(PubDate, PDAT)) +
   geom_point() +
   xlab("Article publication date") +
