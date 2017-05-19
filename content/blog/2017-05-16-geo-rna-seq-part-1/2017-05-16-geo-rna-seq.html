@@ -93,7 +93,7 @@ sumcont &lt;- get_docsums(ids)
 # Number of chunks
 length(sumcont)
 ## [1] 27</code></pre>
-<p>After downloading, data needs to be extracted from XML format for further processing:</p>
+<p>After downloading, docsummaries needs to be extracted from XML format for further processing:</p>
 <pre class="r"><code>library(XML)
 extract_docsums &lt;- function(xmldocument){
   
@@ -136,7 +136,7 @@ ds
 ## #   SeriesTitle &lt;chr&gt;, PlatformTitle &lt;chr&gt;, PlatformTaxa &lt;chr&gt;,
 ## #   SamplesTaxa &lt;chr&gt;, PubMedIds &lt;chr&gt;, Projects &lt;chr&gt;, FTPLink &lt;chr&gt;,
 ## #   GEO2R &lt;chr&gt;</code></pre>
-<p>Now the data needs to be summed up by the <code>PDAT</code> – GEO publication date variable and then we have cumulative counts ready to be plotted. Results show that expression profiling by sequencing has seriously taken off as the number of datasets in NCBI GEO is accumulating exponentially (Figure <a href="#fig:geocount">2</a>).</p>
+<p>Now the data can be summed up by the <code>PDAT</code> – GEO publication date variable and then we have cumulative counts ready to be plotted. Results show that expression profiling by sequencing has seriously taken off as the number of datasets in NCBI GEO is accumulating exponentially (Figure <a href="#fig:geocount">2</a>).</p>
 <pre class="r"><code>library(lubridate)
 pdat &lt;- ds %&gt;% 
   select(PDAT, PubMedIds) %&gt;% 
@@ -169,7 +169,7 @@ Figure 2: The number of datasets of ‘expression profiling by high throughput s
 <blockquote>
 <p>How big is the time gap between publishing article and related GEO dataset and which journals publish most high-throughput sequencing papers.</p>
 </blockquote>
-<p>Let’s look at the published high-throughput expression/sequencing papers. How big is the time gap between publishing article and related GEO dataset and which journals publish most high-throughput sequencing papers. I got already dataset publication dates (<code>PDAT</code>), so I need to download article publication data from PubMed. To download articles summary data I use <code>PubmedIds</code> from GEO Series document summaries.</p>
+<p>Let’s have a look at the published high-throughput expression/sequencing papers. How big is the time gap between publishing article and related GEO dataset and which journals publish most high-throughput sequencing papers. I got already dataset publication dates (<code>PDAT</code>), so I need to download article publication data from PubMed. To download articles summary data I use <code>PubmedIds</code> from GEO Series document summaries.</p>
 <pre class="r"><code># Extract PubMed Ids
 pmid &lt;- ds %&gt;% filter(PubMedIds!=&quot;&quot;) %$% PubMedIds 
 

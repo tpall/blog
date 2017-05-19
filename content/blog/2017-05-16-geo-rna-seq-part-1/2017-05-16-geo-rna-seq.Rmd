@@ -147,7 +147,7 @@ sumcont <- get_docsums(ids)
 length(sumcont)
 ```
 
-After downloading, data needs to be extracted from XML format for further processing:
+After downloading, docsummaries needs to be extracted from XML format for further processing:
 
 ```{r extract-docsums}
 library(XML)
@@ -173,7 +173,7 @@ ds <- sumcont %>% lapply(extract_docsums) %>% bind_rows()
 ds
 ```
 
-Now the data needs to be summed up by the `PDAT` -- GEO publication date variable and then we have cumulative counts ready to be plotted.
+Now the data can be summed up by the `PDAT` -- GEO publication date variable and then we have cumulative counts ready to be plotted.
 Results show that expression profiling by sequencing has seriously taken off as the number of datasets in NCBI GEO is accumulating exponentially (Figure \@ref(fig:geocount)).
 
 ```{r geocount, fig.cap="The number of datasets of 'expression profiling by high throughput sequencing' and associated primary publications in NCBI GEO database grows exponentially."}
@@ -203,7 +203,7 @@ pdat %>%
 
 > How big is the time gap between publishing article and related GEO dataset and which journals publish most high-throughput sequencing papers.
 
-Let's look at the published high-throughput expression/sequencing papers. 
+Let's have a look at the published high-throughput expression/sequencing papers. 
 How big is the time gap between publishing article and related GEO dataset and which journals publish most high-throughput sequencing papers.
 I got already dataset publication dates (`PDAT`), so I need to download article publication data from PubMed.
 To download articles summary data I use `PubmedIds` from GEO Series document summaries.
