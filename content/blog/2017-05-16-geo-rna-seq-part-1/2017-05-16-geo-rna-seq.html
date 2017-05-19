@@ -136,7 +136,7 @@ ds
 ## #   SeriesTitle &lt;chr&gt;, PlatformTitle &lt;chr&gt;, PlatformTaxa &lt;chr&gt;,
 ## #   SamplesTaxa &lt;chr&gt;, PubMedIds &lt;chr&gt;, Projects &lt;chr&gt;, FTPLink &lt;chr&gt;,
 ## #   GEO2R &lt;chr&gt;</code></pre>
-<p>Now the data needs to be summed up by the <code>PDAT</code> – GEO publication date variable and are ready to be plotted. Sequencing for expression profiling has seriously taken off as the number of datasets in NCBI GEO is accumulating exponentially (Figure <a href="#fig:geocount">2</a>).</p>
+<p>Now the data needs to be summed up by the <code>PDAT</code> – GEO publication date variable and then we have cumulative counts ready to be plotted. Results show that expression profiling by sequencing has seriously taken off as the number of datasets in NCBI GEO is accumulating exponentially (Figure <a href="#fig:geocount">2</a>).</p>
 <pre class="r"><code>library(lubridate)
 pdat &lt;- ds %&gt;% 
   select(PDAT, PubMedIds) %&gt;% 
@@ -158,9 +158,9 @@ pdat %&gt;%
         legend.background = element_blank(),
         legend.title = element_blank())</code></pre>
 <div class="figure"><span id="fig:geocount"></span>
-<img src="/blog/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/geocount-1.svg" alt="The number of RNA-seq series and associated primary publications submitted to NCBI GEO database grows exponentially." width="672" />
+<img src="/blog/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/geocount-1.svg" alt="The number of datasets of 'expression profiling by high throughput sequencing' and associated primary publications in NCBI GEO database grows exponentially." width="672" />
 <p class="caption">
-Figure 2: The number of RNA-seq series and associated primary publications submitted to NCBI GEO database grows exponentially.
+Figure 2: The number of datasets of ‘expression profiling by high throughput sequencing’ and associated primary publications in NCBI GEO database grows exponentially.
 </p>
 </div>
 </div>
@@ -215,9 +215,9 @@ ggp &lt;- lapply(list(h, p), ggplotGrob)
 ggp &lt;- arrangeGrob(grobs = ggp, ncol = 2)
 grid.draw(ggp)</code></pre>
 <div class="figure"><span id="fig:pubdiff"></span>
-<img src="/blog/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/pubdiff-1.svg" alt="Length of timeperiod between publication dates of GEO HT-sequencing dataset and article including the study. Left, distribution of timeperiods. Right, scatterplot of dataset versus article publication dates." width="672" />
+<img src="/blog/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/pubdiff-1.svg" alt="Length of timeperiod between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of timeperiods. Right, scatterplot of dataset versus article publication dates." width="672" />
 <p class="caption">
-Figure 3: Length of timeperiod between publication dates of GEO HT-sequencing dataset and article including the study. Left, distribution of timeperiods. Right, scatterplot of dataset versus article publication dates.
+Figure 3: Length of timeperiod between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of timeperiods. Right, scatterplot of dataset versus article publication dates.
 </p>
 </div>
 <p>Top journals publishing high-throughput sequencing data (Figure <a href="#fig:top-journals">4</a>). Interestingly, PLosOne is one of the top publishers of these studies. When we get there, it would be interesting to see if there are any quality differences between studies published in Nature and PLoSOne or publications ending up in Nature Communications instead of Nature.</p>

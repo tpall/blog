@@ -173,10 +173,10 @@ ds <- sumcont %>% lapply(extract_docsums) %>% bind_rows()
 ds
 ```
 
-Now the data needs to be summed up by the `PDAT` -- GEO publication date variable and are ready to be plotted.
-Sequencing for expression profiling has seriously taken off as the number of datasets in NCBI GEO is accumulating exponentially (Figure \@ref(fig:geocount)).
+Now the data needs to be summed up by the `PDAT` -- GEO publication date variable and then we have cumulative counts ready to be plotted.
+Results show that expression profiling by sequencing has seriously taken off as the number of datasets in NCBI GEO is accumulating exponentially (Figure \@ref(fig:geocount)).
 
-```{r geocount, fig.cap="The number of RNA-seq series and associated primary publications submitted to NCBI GEO database grows exponentially."}
+```{r geocount, fig.cap="The number of datasets of 'expression profiling by high throughput sequencing' and associated primary publications in NCBI GEO database grows exponentially."}
 library(lubridate)
 pdat <- ds %>% 
   select(PDAT, PubMedIds) %>% 
@@ -243,7 +243,7 @@ merged_ds %<>% mutate(pubdiff = PDAT-PubDate)
 ```
 
 Nice! In accordance with journal data sharing policies, majority of datasets are made public almost synchronously with article publication date (Figure \@ref(fig:pubdiff)).
-```{r pubdiff, fig.cap="Length of timeperiod between publication dates of GEO HT-sequencing dataset and article including the study. Left, distribution of timeperiods. Right, scatterplot of dataset versus article publication dates."}
+```{r pubdiff, fig.cap="Length of timeperiod between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of timeperiods. Right, scatterplot of dataset versus article publication dates."}
 library(grid)
 library(gridExtra)
 h <- ggplot(merged_ds, aes(pubdiff)) +
