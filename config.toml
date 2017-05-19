@@ -28,7 +28,7 @@ github = "tpall"
 email = "tapa741@gmail.com"
 linkedin = "palltaavi"
 twitter = "taavipall"
-social_banner = "img/banner.png"
+#social_banner = "img/banner.png"
 posts_navigation = true
 
 [params.colors]
