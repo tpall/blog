@@ -12,7 +12,6 @@ disqusshortname = "www-credibleinterval-ee"
 pluralizelisttitles = false
 
 [permalinks]
-#blog = "blog/:slug/"
 
 [params]
 dateform = "Jan 2, 2006"
