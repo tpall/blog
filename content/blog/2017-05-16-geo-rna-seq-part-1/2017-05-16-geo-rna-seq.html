@@ -62,8 +62,8 @@ get_GEO_ids &lt;- function(query, database = &quot;gds&quot;, retmax = 500, ...)
 ids &lt;- get_GEO_ids(query = query, retmax = 20000)
 
 head(ids)
-## [1] &quot;200095858&quot; &quot;200092257&quot; &quot;200090444&quot; &quot;200069047&quot; &quot;200095688&quot; &quot;200089238&quot;</code></pre>
-<p>In order to get all that’s available, based on prior knowledge, I did set the maximum number of retrieved UIDs to 20000. This query retrieved us 13136 GEO Series UIDs.</p>
+## [1] &quot;200099049&quot; &quot;200099041&quot; &quot;200097764&quot; &quot;200099076&quot; &quot;200099074&quot; &quot;200062611&quot;</code></pre>
+<p>In order to get all that’s available, based on prior knowledge, I did set the maximum number of retrieved UIDs to 20000. This query retrieved us 13156 GEO Series UIDs.</p>
 </div>
 <div id="document-summaries" class="section level2">
 <h2>Document summaries</h2>
@@ -115,20 +115,20 @@ extract_docsums &lt;- function(xmldocument){
 ds &lt;- sumcont %&gt;% lapply(extract_docsums) %&gt;% bind_rows()
 
 ds
-## # A tibble: 13,136 × 28
+## # A tibble: 13,156 × 28
 ##           Id Accession   GDS
 ##        &lt;chr&gt;     &lt;chr&gt; &lt;chr&gt;
-## 1  200095858  GSE95858      
-## 2  200092257  GSE92257      
-## 3  200090444  GSE90444      
-## 4  200069047  GSE69047      
-## 5  200095688  GSE95688      
-## 6  200089238  GSE89238      
-## 7  200090914  GSE90914      
-## 8  200088840  GSE88840      
-## 9  200076878  GSE76878      
-## 10 200085112  GSE85112      
-## # ... with 13,126 more rows, and 25 more variables: title &lt;chr&gt;,
+## 1  200099049  GSE99049      
+## 2  200099041  GSE99041      
+## 3  200097764  GSE97764      
+## 4  200099076  GSE99076      
+## 5  200099074  GSE99074      
+## 6  200062611  GSE62611      
+## 7  200095224  GSE95224      
+## 8  200098478  GSE98478      
+## 9  200098476  GSE98476      
+## 10 200073437  GSE73437      
+## # ... with 13,146 more rows, and 25 more variables: title &lt;chr&gt;,
 ## #   summary &lt;chr&gt;, GPL &lt;chr&gt;, GSE &lt;chr&gt;, taxon &lt;chr&gt;, entryType &lt;chr&gt;,
 ## #   gdsType &lt;chr&gt;, ptechType &lt;chr&gt;, valType &lt;chr&gt;, SSInfo &lt;chr&gt;,
 ## #   subsetInfo &lt;chr&gt;, PDAT &lt;chr&gt;, suppFile &lt;chr&gt;, Samples &lt;chr&gt;,
