@@ -3,6 +3,7 @@ date = "2017-05-17"
 title = "About me"
 +++
 
+My name is Taavi Päll.
 I am lecturer at [Tallinn University of Technology](https://www.ttu.ee) (TTU), Estonia. 
 I teach [Oncobiology](http://onkobioloogia.netlify.com) (_in estonian_) to master's students. 
 Since 2016 I also teach [Reproducible Data Analysis in R](https://tpall.github.io/learn-r/) in University of Tartu, Estonia, for the [Graduate School in Biomedicine and Biotechnology](http://www.biomeddk.ut.ee/148881).

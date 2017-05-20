@@ -1,9 +1,9 @@
-baseurl = "/"
+baseurl = "https://www.example.com/"
 languageCode = "en-us"
-title = "Developing analysis"
+title = "Blackburn Theme Demo"
 theme = "blackburn"
-author = "Taavi Päll"
-copyright = "&copy; 2017. All rights reserved."
+author = "Yoshiharu Yamashita"
+copyright = "&copy; 2016. All rights reserved."
 canonifyurls = true
 paginate = 10
 
@@ -13,10 +13,10 @@ paginate = 10
 
 [params]
   # Shown in the home page
-  subtitle = "Digging in molecular biomedicine data"
-  brand = "CI"
-  googleAnalytics = "UA-99576455-1"
-  disqus = "www-credibleinterval-ee"
+  subtitle = "A Hugo Theme"
+  brand = "Blackburn"
+  googleAnalytics = "Your Google Analytics tracking ID"
+  disqus = "Your Disqus shortname"
   # CSS name for highlight.js
   highlightjs = "androidstudio"
   dateFormat = "02 Jan 2006, 15:04"
@@ -50,9 +50,9 @@ paginate = 10
 [social]
   # Link your social networking accouns to the side menu
   # by entering your username or ID.
-  twitter = "taavipall"
-  #facebook = "taavipall"
-  # instagram = "*"
-  github = "tpall"
-  stackoverflow = "1657871"
-  linkedin = "palltaavi"
+  twitter = "*"
+  facebook = "*"
+  instagram = "*"
+  github = "yoshiharuyamashita"
+  stackoverflow = "*"
+  linkedin = "*"

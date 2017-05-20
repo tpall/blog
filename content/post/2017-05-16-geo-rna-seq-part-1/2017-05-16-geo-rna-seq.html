@@ -1,0 +1,253 @@
+---
+title: "RNA-seq experiments quality, part 1: quering GEO database from R using E-Utils"
+author: "Taavi Päll, Ülo Maiväli"
+date: "2017-05-17"
+categories: ["R"]
+tags: ["RNA-seq", "NCBI GEO", "P-value"]
+---
+
+
+
+<p><em>This the first post in series describing the analysis of P-value histograms from RNA sequencing experiments uploaded into NCBI GEO database as supplemental data.</em></p>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>This is about replication. Poor reproducibility<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a> and replicability<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a> have become major concerns in experimental biomedical science. Reproducibility of a study is mostly determined by the availability of the original data and whether analyses are described in a sufficient detail.</p>
+<blockquote>
+<p>Reproducibility of a study is mostly determined by the availability of the original data and whether analyses are descibed in a sufficient detail.</p>
+</blockquote>
+<p>No new data are generated. Reproducing a study is something that everyone should do when reading a research article really carefully and trying to understand how authors reached to their conclusions. It’s a function of a peer review, basically.</p>
+<p>In contrast, a replication study generates new data by following the original experimental procedures.</p>
+<blockquote>
+<p>A replication study generates new data by following the original experimental procedures.</p>
+</blockquote>
+<p>Therefore, sufficiently detailed description of the methods of the study is a prerequisite for successful replication. Replication study introduces new evidence to science and thus has the potential to change the conclusions of the original study.</p>
+<p>There are two major obstacles in the replication business: (1) the high cost of actually repeating experiments and the willingness to pay this cost is greatly reduced by (2) the lack of consensus on how to measure replicability. This makes it desirable to first estimate <em>in silico</em>, which studies are worth replicating in the lab, and how to best replicate them.</p>
+<p>The uncertainty in identifying true discoveries remains in case reproduction and replication and is caused by random nature of P-values calculated for our experimental samples. In the long run, randomness can be controlled by assuming false discovery rate (FDR). As an other arm, trust into obtained P-value can be increased by estimating prospectively the probability of success, the power of detecting true effects. Statistical power is used to set the sensitivity of the experimental system in the context of many consecutive measurements.<br />
+However, power is mostly not estimated or reported in published articles and the already conducted study cannot be used to estimate its power (Figure <a href="#fig:simulate-power">1</a>).</p>
+<div class="figure"><span id="fig:simulate-power"></span>
+<img src="/post/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/simulate-power-1.svg" alt="Statistical power cannot be estimated retrospectively. One sample t-tests were simulated at predetermined power = 0.78 (true power). Statistical power, calculated for each sample, was classified into two bins based on whether it was within +/- 10% range of true power or not. As can be seen, in 81% of cases retrospective power misses the margin." width="672" />
+<p class="caption">
+Figure 1: Statistical power cannot be estimated retrospectively. One sample t-tests were simulated at predetermined power = 0.78 (true power). Statistical power, calculated for each sample, was classified into two bins based on whether it was within +/- 10% range of true power or not. As can be seen, in 81% of cases retrospective power misses the margin.
+</p>
+</div>
+<p>Therefore, reported single P-values tell us nothing about the probability of null hypothesis or the quality of experiment design and replicability.</p>
+<p>Fortunately, in case of <em>omics</em> experiments, where large amounts of P-values are generated in parallel, it is possible to judge the quality of experiment and its potential replicability just by <a href="http://varianceexplained.org/statistics/interpreting-pvalue-histogram/">looking at the shape of the P-value histogram</a>. In addition, the proportion of true null effects can be calculated from the shape of P-value histogram. When we know the number of true null effects, then we know the number of true non-null effects, and then the power can be calculated.</p>
+<p>RNA sequencing (RNA-seq) is usually done in a massively parallel way, testing for differential expression between experiment and control conditions of thousands of RNA pairs. This allows to check the quality of each RNA-seq experiment by examining the distribution of the P-values that were calculated by the original authors and were used by them to make inferences about differential expression of individual RNAs in their study.<br />
+When these P-values indicate a technically successful experiment, they can be further used to calculate the false discovery rate and assess the prospective power by using the proportion of true nulls, which together enable to analyse the replication potential of the study.</p>
+</div>
+<div id="databases" class="section level2">
+<h2>Databases</h2>
+<p>RNA-seq and other high-throughput experiments can be obtained from three sources storing data from high-throughput experiments: <a href="https://www.ncbi.nlm.nih.gov/geo/">NCBI GEO</a>, <a href="http://www.ddbj.nig.ac.jp">DDBJ</a> and <a href="https://www.ebi.ac.uk/ena">ENA</a>. According to <a href="http://fged.org/projects/minseqe/">Minimum Information about a high-throughput SEQuencing Experiment</a>, one could expect to find also <em>“The ‘final’ processed (or summary) data for the set of assays in the study: the data on which the conclusions in the related publication are based, and descriptions of the data format”</em> along with sequence read data and metadata deposited into databases. Most likely, these final processed data contain set of P-values which can be used for post-experiment quality control. We will going to use <a href="https://www.ncbi.nlm.nih.gov/gds/">NCBI GEO database</a> as perhaps the most well-known source.</p>
+</div>
+<div id="query" class="section level2">
+<h2>Query</h2>
+<p>NCBI GEO database can be accessed from R via Bioconductor’s package <code>GEOquery</code>. However, <code>GEOquery</code> assumes that you already know the IDs of entities that you want to download. We don’t know, but we want them all. For programmatic access, NCBI has Entrez Programming Utilities (<a href="https://www.ncbi.nlm.nih.gov/books/NBK25501/">E-Utils</a>). Here we are going to use <code>ESearch</code> which provides a list of UIDs matching a text query and <code>ESummary</code> for downloading document summaries (DocSums) for a list of these UIDs.</p>
+<p>E-Utils can be used to construct HTTP request to NCBI server using <code>GET</code> verb from <code>httr</code> package. Let’s say we are interested in total number of high throughput sequencing datasets in GEO database. We can use following example query specifying study type: ‘expression profiling by high throughput sequencing[DataSet Type]’ to get UIDs for RNA-seq experiments (mostly). Response contains xml content where we can extract our UIDs:</p>
+<pre class="r"><code>library(tidyverse)
+library(magrittr) # %&lt;&gt;% and set_colnames()
+library(httr) # GET()
+library(xml2) # xml stuff
+
+query &lt;- &#39;expression profiling by high throughput sequencing[DataSet Type]&#39;
+
+# Function to submit request to NCBI
+get_GEO_ids &lt;- function(query, database = &quot;gds&quot;, retmax = 500, ...){
+  url &lt;- &quot;https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi&quot;
+  qres &lt;- GET(url, query = list(db = database, term = query, retmax = retmax, ...))
+  rescont &lt;- content(qres)
+  rescont %&gt;% xml_find_all(xpath = &quot;//Id&quot;) %&gt;% xml_text()
+}
+
+# Get Ids
+ids &lt;- get_GEO_ids(query = query, retmax = 20000)
+
+head(ids)
+## [1] &quot;200099049&quot; &quot;200099041&quot; &quot;200097764&quot; &quot;200099076&quot; &quot;200099074&quot; &quot;200062611&quot;</code></pre>
+<p>In order to get all that’s available, based on prior knowledge, I did set the maximum number of retrieved UIDs to 20000. This query retrieved us 13156 GEO Series UIDs.</p>
+</div>
+<div id="document-summaries" class="section level2">
+<h2>Document summaries</h2>
+<p>Now we can use UIDs to retrieve document summaries. Document summary contains GEO Accession number and bunch of other info, like series title and summary, dataset publication date, PubMed id when study has been published, used taxa, and platform id among others. Large query must be split into smaller pieces, otherwise the query will freeze. Here I submit multiple queries with chunk size of 500.</p>
+<pre class="r"><code># Function to document summaries for UIDs from NCBI
+get_docsums &lt;- function(ids, database = &quot;gds&quot;){
+  url &lt;- &quot;https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi&quot;
+  
+  # Split UIDs into chunks of size max 500
+  chunkize &lt;-  function(x, chunksize) {
+    split(x, ceiling(seq_along(x)/chunksize))
+  }
+  
+  UID_chunks &lt;- chunkize(ids, 500)
+
+  get_qsums &lt;- function(uid) {
+    GET(url, query = list(db = database, id = paste(uid, collapse = &quot;,&quot;)))
+  }
+  
+  qsums &lt;- lapply(UID_chunks, get_qsums) 
+  lapply(qsums, content)
+}
+
+# Get document summaries
+sumcont &lt;- get_docsums(ids)
+
+# Number of chunks
+length(sumcont)
+## [1] 27</code></pre>
+<p>After downloading, docsummaries needs to be extracted from XML format for further processing:</p>
+<pre class="r"><code>library(XML)
+extract_docsums &lt;- function(xmldocument){
+  
+  d &lt;-  xmlParse(xmldocument) %&gt;% xmlRoot
+  
+  items &lt;- d[1]$DocSum %&gt;% 
+    xmlSApply(xmlGetAttr, name = &quot;Name&quot;) %&gt;% 
+    unlist() %&gt;% 
+    c(&quot;Id&quot;,.) %&gt;% 
+    unname()
+  
+  d %&gt;% 
+    xmlSApply(. %&gt;% getChildrenStrings) %&gt;% 
+    t %&gt;% 
+    as_data_frame %&gt;% 
+    set_colnames(items)
+}
+
+ds &lt;- sumcont %&gt;% lapply(extract_docsums) %&gt;% bind_rows()
+
+ds
+## # A tibble: 13,156 × 28
+##           Id Accession   GDS
+##        &lt;chr&gt;     &lt;chr&gt; &lt;chr&gt;
+## 1  200099049  GSE99049      
+## 2  200099041  GSE99041      
+## 3  200097764  GSE97764      
+## 4  200099076  GSE99076      
+## 5  200099074  GSE99074      
+## 6  200062611  GSE62611      
+## 7  200095224  GSE95224      
+## 8  200098478  GSE98478      
+## 9  200098476  GSE98476      
+## 10 200073437  GSE73437      
+## # ... with 13,146 more rows, and 25 more variables: title &lt;chr&gt;,
+## #   summary &lt;chr&gt;, GPL &lt;chr&gt;, GSE &lt;chr&gt;, taxon &lt;chr&gt;, entryType &lt;chr&gt;,
+## #   gdsType &lt;chr&gt;, ptechType &lt;chr&gt;, valType &lt;chr&gt;, SSInfo &lt;chr&gt;,
+## #   subsetInfo &lt;chr&gt;, PDAT &lt;chr&gt;, suppFile &lt;chr&gt;, Samples &lt;chr&gt;,
+## #   Relations &lt;chr&gt;, ExtRelations &lt;chr&gt;, n_samples &lt;chr&gt;,
+## #   SeriesTitle &lt;chr&gt;, PlatformTitle &lt;chr&gt;, PlatformTaxa &lt;chr&gt;,
+## #   SamplesTaxa &lt;chr&gt;, PubMedIds &lt;chr&gt;, Projects &lt;chr&gt;, FTPLink &lt;chr&gt;,
+## #   GEO2R &lt;chr&gt;</code></pre>
+<p>Now the data can be summed up by the <code>PDAT</code> – GEO publication date variable and then we have cumulative counts ready to be plotted. Results show that expression profiling by sequencing has seriously taken off as the number of datasets in NCBI GEO is accumulating exponentially (Figure <a href="#fig:geocount">2</a>).</p>
+<pre class="r"><code>library(lubridate)
+pdat &lt;- ds %&gt;% 
+  select(PDAT, PubMedIds) %&gt;% 
+  mutate(pub=nchar(PubMedIds)!=0) %&gt;% 
+  group_by(PDAT) %&gt;% 
+  summarise(N = n(),
+            pub = sum(pub)) %&gt;% 
+  mutate_at(vars(N, pub), cumsum)
+  
+pdat %&lt;&gt;% gather(key,value, -PDAT) 
+
+pdat %&gt;% 
+  ggplot(aes(ymd(PDAT), value, linetype=key)) + 
+  geom_line() +
+  ylab(&quot;Number of GEO series&quot;) +
+  xlab(&quot;Date&quot;) +
+  scale_linetype_discrete(labels=c(&quot;GEO series&quot;,&quot;GEO series with\npublications&quot;)) +
+  theme(legend.position = c(.35, 0.8),
+        legend.background = element_blank(),
+        legend.title = element_blank())</code></pre>
+<div class="figure"><span id="fig:geocount"></span>
+<img src="/post/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/geocount-1.svg" alt="The number of datasets of 'expression profiling by high throughput sequencing' and associated primary publications in NCBI GEO database grows exponentially." width="672" />
+<p class="caption">
+Figure 2: The number of datasets of ‘expression profiling by high throughput sequencing’ and associated primary publications in NCBI GEO database grows exponentially.
+</p>
+</div>
+</div>
+<div id="publication-of-high-throughput-expression-data" class="section level2">
+<h2>Publication of high-throughput expression data</h2>
+<blockquote>
+<p>How big is the time gap between publishing article and related GEO dataset and which journals publish most high-throughput sequencing papers.</p>
+</blockquote>
+<p>Let’s have a look at the published high-throughput expression/sequencing papers. How big is the time gap between publishing article and related GEO dataset and which journals publish most high-throughput sequencing papers. I got already dataset publication dates (<code>PDAT</code>), so I need to download article publication data from PubMed. To download articles summary data I use <code>PubmedIds</code> from GEO Series document summaries.</p>
+<pre class="r"><code># Extract PubMed Ids
+pmid &lt;- ds %&gt;% filter(PubMedIds!=&quot;&quot;) %$% PubMedIds 
+
+# PubMed should be queried one-by-one
+pubmed_summary &lt;- function(uid){
+  url &lt;- &quot;https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi&quot;
+  GET(url, query = list(db = &quot;pubmed&quot;, id = uid))
+}
+
+# NB! This step takes time
+pubmed &lt;- data_frame(PubMedIds = pmid) %&gt;% 
+  mutate(docsums = map(pmid, ~{message(.x); pubmed_summary(.x)}))</code></pre>
+<p>I extract info from downloaded summaries, convert into data.frame and join pubmed data with GEO data using <code>PubMedIds</code>:</p>
+<pre class="r"><code># Extract document summaries
+pubmed_sums &lt;- pubmed %&gt;% mutate(docsums = map(docsums, ~try(extract_docsums(.x)), ))
+## Entity &#39;nbsp&#39; not defined
+pubmed_sums %&lt;&gt;% 
+  filter(!map_lgl(docsums, ~inherits(.x,&quot;try-error&quot;))) %&gt;% 
+  unnest
+# Merge with GEO doc summaries
+merged_ds &lt;- left_join(select(pubmed_sums, -Id), select(ds, Id, Accession, PubMedIds, PDAT, GPL))
+# Parse dates into common format
+merged_ds &lt;- mutate_at(merged_ds, vars(PubDate, PDAT), ymd) %&gt;% 
+  select(Accession,PubMedIds,PubDate,PDAT,Source,LastAuthor,GPL)
+## Warning: 5040 failed to parse.
+# Calculate differences
+merged_ds %&lt;&gt;% mutate(pubdiff = PDAT-PubDate)</code></pre>
+<p>Nice! In accordance with journal data sharing policies, majority of datasets are made public almost synchronously with article publication date (Figure <a href="#fig:pubdiff">3</a>).</p>
+<pre class="r"><code>library(grid)
+library(gridExtra)
+h &lt;- ggplot(merged_ds, aes(pubdiff)) +
+  geom_histogram(bins = 60) +
+  xlab(&quot;Time difference in days&quot;) +
+  ylab(&quot;Number of GEO Series&quot;)
+
+p &lt;- ggplot(merged_ds, aes(PubDate, PDAT)) +
+  geom_point() +
+  xlab(&quot;Article publication date&quot;) +
+  ylab(&quot;Dataset publication date&quot;)
+ggp &lt;- lapply(list(h, p), ggplotGrob)
+## Warning: Removed 5040 rows containing non-finite values (stat_bin).
+## Warning: Removed 5040 rows containing missing values (geom_point).
+ggp &lt;- arrangeGrob(grobs = ggp, ncol = 2)
+grid.draw(ggp)</code></pre>
+<div class="figure"><span id="fig:pubdiff"></span>
+<img src="/post/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/pubdiff-1.svg" alt="Time periods between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of time periods. Right, scatterplot of dataset versus article publication dates." width="672" />
+<p class="caption">
+Figure 3: Time periods between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of time periods. Right, scatterplot of dataset versus article publication dates.
+</p>
+</div>
+<p>Top journals publishing high-throughput sequencing data (Figure <a href="#fig:top-journals">4</a>). Interestingly, PLosOne is one of the top publishers of these studies. When we get there, it would be interesting to see if there are any quality differences between studies published in Nature and PLoSOne or publications ending up in Nature Communications instead of Nature.</p>
+<pre class="r"><code># Summarise studies by journal
+top &lt;- select(merged_ds, Accession, Source) %&gt;% 
+  group_by(Source) %&gt;% 
+  summarise(N=n()) %&gt;% 
+  arrange(desc(N))
+
+# Plot top25 publishers
+ggplot(top[1:25,], aes(Source, N)) + 
+  # geom_bar(stat = &quot;identity&quot;) + 
+  geom_point() +
+  scale_x_discrete(limits = top$Source[1:25]) +
+  scale_y_continuous(limits = c(0, 1200)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5), 
+        axis.title.x = element_blank()) +
+  ylab(&quot;Number of articles&quot;)</code></pre>
+<div class="figure"><span id="fig:top-journals"></span>
+<img src="/post/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/top-journals-1.svg" alt="Top 25 journals publishing high-throughput sequencing studies." width="672" />
+<p class="caption">
+Figure 4: Top 25 journals publishing high-throughput sequencing studies.
+</p>
+</div>
+<p>This is it, my first post. Next post will be about identifying, downloading and importing of supplemental files for GEO Accessions.</p>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>The inability of reproducing, by using the original data, the original data analysis exactly.<a href="#fnref1">↩</a></p></li>
+<li id="fn2"><p>The inability of reproducing, by new experiments, the original data approximately.<a href="#fnref2">↩</a></p></li>
+</ol>
+</div>
