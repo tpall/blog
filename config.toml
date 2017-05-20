@@ -1,4 +1,4 @@
-baseurl = "https://credibleinterval.netlify.com/"
+baseurl = "blog.credibleinterval.ee/"
 theme = "cocoa-eh-hugo-theme"
 builddrafts = true
 canonifyurls = true
