@@ -1,4 +1,4 @@
-baseurl = "https://speaker-candles-66888.netlify.com/"
+baseurl = "https://blog-credibleinterval.netlify.com/"
 theme = "cocoa-eh-hugo-theme"
 builddrafts = true
 canonifyurls = true
