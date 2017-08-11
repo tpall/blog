@@ -1,7 +1,7 @@
 ---
 title: "RNA-seq experiments quality, part 1: quering GEO database from R using E-Utils"
 author: "Taavi Päll, Ülo Maiväli"
-date: "2017-05-17"
+date: "2017-05-16"
 categories: ["R"]
 tags: ["RNA-seq", "NCBI GEO", "P-value"]
 ---
@@ -23,9 +23,9 @@ tags: ["RNA-seq", "NCBI GEO", "P-value"]
 <p>Therefore, sufficiently detailed description of the methods of the study is a prerequisite for successful replication. Replication study introduces new evidence to science and thus has the potential to change the conclusions of the original study.</p>
 <p>There are two major obstacles in the replication business: (1) the high cost of actually repeating experiments and the willingness to pay this cost is greatly reduced by (2) the lack of consensus on how to measure replicability. This makes it desirable to first estimate <em>in silico</em>, which studies are worth replicating in the lab, and how to best replicate them.</p>
 <p>The uncertainty in identifying true discoveries remains in case reproduction and replication and is caused by random nature of P-values calculated for our experimental samples. In the long run, randomness can be controlled by assuming false discovery rate (FDR). As an other arm, trust into obtained P-value can be increased by estimating prospectively the probability of success, the power of detecting true effects. Statistical power is used to set the sensitivity of the experimental system in the context of many consecutive measurements.<br />
-However, power is mostly not estimated or reported in published articles and the already conducted study cannot be used to estimate its power (Figure <a href="#fig:simulate-power">1</a>).</p>
-<div class="figure"><span id="fig:simulate-power"></span>
-<img src="/post/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/simulate-power-1.svg" alt="Statistical power cannot be estimated retrospectively. One sample t-tests were simulated at predetermined power = 0.78 (true power). Statistical power, calculated for each sample, was classified into two bins based on whether it was within +/- 10% range of true power or not. As can be seen, in 81% of cases retrospective power misses the margin." width="672" />
+However, power is mostly not estimated or reported in published articles and the already conducted study cannot be used to estimate its power (Figure <a href="#fig:power">1</a>).</p>
+<div class="figure"><span id="fig:power"></span>
+<img src="/post/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/power-1.svg" alt="Statistical power cannot be estimated retrospectively. One sample t-tests were simulated at predetermined power = 0.78 (true power). Statistical power, calculated for each sample, was classified into two bins based on whether it was within +/- 10% range of true power or not. As can be seen, in 81% of cases retrospective power misses the margin." width="672" />
 <p class="caption">
 Figure 1: Statistical power cannot be estimated retrospectively. One sample t-tests were simulated at predetermined power = 0.78 (true power). Statistical power, calculated for each sample, was classified into two bins based on whether it was within +/- 10% range of true power or not. As can be seen, in 81% of cases retrospective power misses the margin.
 </p>
@@ -62,8 +62,8 @@ get_GEO_ids &lt;- function(query, database = &quot;gds&quot;, retmax = 500, ...)
 ids &lt;- get_GEO_ids(query = query, retmax = 20000)
 
 head(ids)
-## [1] &quot;200099049&quot; &quot;200099041&quot; &quot;200097764&quot; &quot;200099076&quot; &quot;200099074&quot; &quot;200062611&quot;</code></pre>
-<p>In order to get all that’s available, based on prior knowledge, I did set the maximum number of retrieved UIDs to 20000. This query retrieved us 13156 GEO Series UIDs.</p>
+## [1] &quot;200099676&quot; &quot;200098985&quot; &quot;200098984&quot; &quot;200098651&quot; &quot;200098650&quot; &quot;200076573&quot;</code></pre>
+<p>In order to get all that’s available, based on prior knowledge, I did set the maximum number of retrieved UIDs to 20000. This query retrieved us 13370 GEO Series UIDs.</p>
 </div>
 <div id="document-summaries" class="section level2">
 <h2>Document summaries</h2>
@@ -115,20 +115,20 @@ extract_docsums &lt;- function(xmldocument){
 ds &lt;- sumcont %&gt;% lapply(extract_docsums) %&gt;% bind_rows()
 
 ds
-## # A tibble: 13,156 × 28
+## # A tibble: 13,370 x 28
 ##           Id Accession   GDS
 ##        &lt;chr&gt;     &lt;chr&gt; &lt;chr&gt;
-## 1  200099049  GSE99049      
-## 2  200099041  GSE99041      
-## 3  200097764  GSE97764      
-## 4  200099076  GSE99076      
-## 5  200099074  GSE99074      
-## 6  200062611  GSE62611      
-## 7  200095224  GSE95224      
-## 8  200098478  GSE98478      
-## 9  200098476  GSE98476      
-## 10 200073437  GSE73437      
-## # ... with 13,146 more rows, and 25 more variables: title &lt;chr&gt;,
+##  1 200099676  GSE99676      
+##  2 200098985  GSE98985      
+##  3 200098984  GSE98984      
+##  4 200098651  GSE98651      
+##  5 200098650  GSE98650      
+##  6 200076573  GSE76573      
+##  7 200089265  GSE89265      
+##  8 200095711  GSE95711      
+##  9 200082240  GSE82240      
+## 10 200086321  GSE86321      
+## # ... with 13,360 more rows, and 25 more variables: title &lt;chr&gt;,
 ## #   summary &lt;chr&gt;, GPL &lt;chr&gt;, GSE &lt;chr&gt;, taxon &lt;chr&gt;, entryType &lt;chr&gt;,
 ## #   gdsType &lt;chr&gt;, ptechType &lt;chr&gt;, valType &lt;chr&gt;, SSInfo &lt;chr&gt;,
 ## #   subsetInfo &lt;chr&gt;, PDAT &lt;chr&gt;, suppFile &lt;chr&gt;, Samples &lt;chr&gt;,
@@ -184,7 +184,7 @@ pubmed &lt;- data_frame(PubMedIds = pmid) %&gt;%
   mutate(docsums = map(pmid, ~{message(.x); pubmed_summary(.x)}))</code></pre>
 <p>I extract info from downloaded summaries, convert into data.frame and join pubmed data with GEO data using <code>PubMedIds</code>:</p>
 <pre class="r"><code># Extract document summaries
-pubmed_sums &lt;- pubmed %&gt;% mutate(docsums = map(docsums, ~try(extract_docsums(.x)), ))
+pubmed_sums &lt;- pubmed %&gt;% mutate(docsums = map(docsums, ~try(extract_docsums(.x), silent=T)))
 ## Entity &#39;nbsp&#39; not defined
 pubmed_sums %&lt;&gt;% 
   filter(!map_lgl(docsums, ~inherits(.x,&quot;try-error&quot;))) %&gt;% 
@@ -192,12 +192,16 @@ pubmed_sums %&lt;&gt;%
 # Merge with GEO doc summaries
 merged_ds &lt;- left_join(select(pubmed_sums, -Id), select(ds, Id, Accession, PubMedIds, PDAT, GPL))
 # Parse dates into common format
-merged_ds &lt;- mutate_at(merged_ds, vars(PubDate, PDAT), ymd) %&gt;% 
-  select(Accession,PubMedIds,PubDate,PDAT,Source,LastAuthor,GPL)
-## Warning: 5040 failed to parse.
+merged_ds &lt;- mutate_at(merged_ds, vars(PDAT,PubDate, EPubDate), ymd) %&gt;% 
+  select(Accession,PubMedIds,PDAT,PubDate,EPubDate,Source,LastAuthor,GPL)
+# If PubDate is missing, use EPubDate
+merged_ds %&lt;&gt;% 
+  mutate(PubDate = if_else(is.na(PubDate), EPubDate, PubDate))
+# Records still missing publication date
+no_pubdate &lt;- filter(merged_ds, is.na(PubDate))
 # Calculate differences
 merged_ds %&lt;&gt;% mutate(pubdiff = PDAT-PubDate)</code></pre>
-<p>Nice! In accordance with journal data sharing policies, majority of datasets are made public almost synchronously with article publication date (Figure <a href="#fig:pubdiff">3</a>).</p>
+<p>Nice! In accordance with journal data sharing policies, majority of datasets are made public almost synchronously with article publication date (Figure <a href="#fig:pubdiff">3</a>). 125 articles referencing 152 GSE Series lack publication date in their document summaries.</p>
 <pre class="r"><code>library(grid)
 library(gridExtra)
 h &lt;- ggplot(merged_ds, aes(pubdiff)) +
@@ -205,22 +209,23 @@ h &lt;- ggplot(merged_ds, aes(pubdiff)) +
   xlab(&quot;Time difference in days&quot;) +
   ylab(&quot;Number of GEO Series&quot;)
 
+library(MASS) # rlm because of outliers
 p &lt;- ggplot(merged_ds, aes(PubDate, PDAT)) +
   geom_point() +
   xlab(&quot;Article publication date&quot;) +
-  ylab(&quot;Dataset publication date&quot;)
+  ylab(&quot;Dataset publication date&quot;) +
+  geom_smooth(method = &quot;rlm&quot;) 
 ggp &lt;- lapply(list(h, p), ggplotGrob)
-## Warning: Removed 5040 rows containing non-finite values (stat_bin).
-## Warning: Removed 5040 rows containing missing values (geom_point).
 ggp &lt;- arrangeGrob(grobs = ggp, ncol = 2)
 grid.draw(ggp)</code></pre>
 <div class="figure"><span id="fig:pubdiff"></span>
-<img src="/post/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/pubdiff-1.svg" alt="Time periods between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of time periods. Right, scatterplot of dataset versus article publication dates." width="672" />
+<img src="/post/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/pubdiff-1.svg" alt="Time periods between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of time periods. Right, scatterplot of dataset versus article publication dates. Blue line, robust linear regression `MASS::rlm` fit." width="672" />
 <p class="caption">
-Figure 3: Time periods between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of time periods. Right, scatterplot of dataset versus article publication dates.
+Figure 3: Time periods between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of time periods. Right, scatterplot of dataset versus article publication dates. Blue line, robust linear regression <code>MASS::rlm</code> fit.
 </p>
 </div>
-<p>Top journals publishing high-throughput sequencing data (Figure <a href="#fig:top-journals">4</a>). Interestingly, PLosOne is one of the top publishers of these studies. When we get there, it would be interesting to see if there are any quality differences between studies published in Nature and PLoSOne or publications ending up in Nature Communications instead of Nature.</p>
+<pre class="r"><code>detach(&quot;package:MASS&quot;, unload=TRUE) # masks dplyr::select()</code></pre>
+<p>Top journals publishing high-throughput sequencing data is shown on Figure <a href="#fig:top-journals">4</a>. Interestingly, PLosOne is one of the top publishers of these studies. When we get there, it would be interesting to see if there are any quality differences between studies published in Nature and PLoSOne or publications ending up in Nature Communications instead of Nature.</p>
 <pre class="r"><code># Summarise studies by journal
 top &lt;- select(merged_ds, Accession, Source) %&gt;% 
   group_by(Source) %&gt;% 
@@ -229,7 +234,6 @@ top &lt;- select(merged_ds, Accession, Source) %&gt;%
 
 # Plot top25 publishers
 ggplot(top[1:25,], aes(Source, N)) + 
-  # geom_bar(stat = &quot;identity&quot;) + 
   geom_point() +
   scale_x_discrete(limits = top$Source[1:25]) +
   scale_y_continuous(limits = c(0, 1200)) +
@@ -242,7 +246,66 @@ ggplot(top[1:25,], aes(Source, N)) +
 Figure 4: Top 25 journals publishing high-throughput sequencing studies.
 </p>
 </div>
+</div>
+<div id="popular-platform" class="section level2">
+<h2>Popular platform</h2>
+<p>What are the most popular sequencing platforms in use:</p>
+<pre class="r"><code># Some dataset use more than one GPL (platform) 
+library(stringr)
+plat &lt;- ds %&gt;% 
+  select(Accession, GPL, PDAT, n_samples) %&gt;% 
+  mutate(GPL = str_split(GPL,&quot;;&quot;)) %&gt;% 
+  unnest()
+
+# Summarise platform submissions, filter out datasets with missing GPL info
+plat_sum &lt;- plat %&gt;% 
+  mutate(N = nchar(GPL)!=0) %&gt;%
+  filter(N) %&gt;% 
+  group_by(GPL) %&gt;% 
+  arrange(GPL, PDAT) %&gt;% 
+  mutate_at(&quot;N&quot;, cumsum)
+
+# Top 10 most popular platforms: to narrow down selection
+popular_gpl &lt;- sort(table(plat$GPL), decreasing = T)
+top_gpl &lt;- plat_sum %&gt;% 
+  filter(GPL %in% names(popular_gpl[1:10])) 
+
+# GPL ids to names: add human readable names to platforms
+library(GEOquery)
+top_gpl_names &lt;- top_gpl %&gt;% 
+  select(GPL) %&gt;% 
+  distinct() %&gt;% 
+  mutate(title = map_chr(GPL, ~{gpl &lt;- getGEO(paste0(&quot;GPL&quot;,.x)); gpl@header$title}))
+
+# Abbreviate species names
+abbr_species &lt;- function(x){
+  sp &lt;- paste(tail(unlist(str_extract_all(x, &quot;\\b\\w&quot;)), 2), collapse = &quot;&quot;)
+  replacement &lt;- paste0(&quot;\\(&quot;, sp, &quot;\\)&quot;)
+  str_replace(x, &quot;\\(.*\\)&quot;, replacement)
+}
+
+top_gpl_names %&lt;&gt;% 
+  mutate(Platform = abbr_species(title))
+
+# Merge with publication data
+top_gpl %&lt;&gt;% left_join(top_gpl_names)</code></pre>
+<p>All top 10 most popular platforms come from Illumina (Figure <a href="#fig:plot-popular-platforms">5</a>). Interestingly, the number of human and mouse datasets sequenced using same platforms grow at very similar rate.</p>
+<pre class="r"><code>library(ggthemes)
+top_gpl %&gt;%
+  filter(GPL%in%names(popular_gpl[1:10])) %&gt;% 
+  ggplot(aes(ymd(PDAT), N, color = Platform)) +
+  geom_line(size=1) +
+  scale_color_tableau() +
+  ylab(&quot;Cumulative number of datasets&quot;) +
+  xlab(&quot;Publication date&quot;)</code></pre>
+<div class="figure"><span id="fig:plot-popular-platforms"></span>
+<img src="/post/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq_files/figure-html/plot-popular-platforms-1.svg" alt="Submission of high-throughput sequencing datasets from top 10 most popular platforms. Hs, Homo sapiens; Mm, Mus musculus" width="672" />
+<p class="caption">
+Figure 5: Submission of high-throughput sequencing datasets from top 10 most popular platforms. Hs, Homo sapiens; Mm, Mus musculus
+</p>
+</div>
 <p>This is it, my first post. Next post will be about identifying, downloading and importing of supplemental files for GEO Accessions.</p>
+<p><em><strong>Last update:</strong></em> 2017-05-23 11:35:31</p>
 </div>
 <div class="footnotes">
 <hr />

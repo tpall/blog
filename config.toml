@@ -7,6 +7,8 @@ copyright = "&copy; 2017. All rights reserved."
 canonifyurls = true
 paginate = 10
 
+ignoreFiles = ["\\.Rmd$", "_files$", "_cache$", "\\.RData$"]
+
 [indexes]
   tag = "tags"
   topic = "topics"
@@ -19,7 +21,7 @@ paginate = 10
   disqus = "www-credibleinterval-ee"
   # CSS name for highlight.js
   highlightjs = "androidstudio"
-  dateFormat = "02 Jan 2006, 15:04"
+  dateFormat = "02 Jan 2006"
 
 [menu]
   # Shown in the side menu.

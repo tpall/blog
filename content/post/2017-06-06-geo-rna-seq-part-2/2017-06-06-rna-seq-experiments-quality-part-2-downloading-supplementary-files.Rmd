@@ -1,0 +1,221 @@
+---
+title: 'RNA-seq experiments quality, part 2: downloading supplementary files'
+author: Taavi Päll
+date: '2017-06-05'
+categories: [R]
+tags: [RNA-seq, NCBI GEO, P-values, read counts]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, message=FALSE, warning=FALSE, dev='svg')
+```
+
+NCBI requires __processed data__ as part of [high-throughput sequence data GEO submission](https://www.ncbi.nlm.nih.gov/geo/info/seq.html). 
+With their words: 'the final processed data are defined as the data on which the conclusions in the related manuscript are based'. 
+Processed sequence data might be either or both __raw counts of sequencing reads__ and/or __normalized abundance measurements__.
+ChIP-Seq data might include peak files. 
+
+> The final processed data are defined as the data on which the conclusions in the related manuscript are based
+
+These processed data is submitted as __supplemental files__. 
+We are looking either for toptables with full sets of unadjusted raw P-values or processed raw sequence reads in GEO submissions.
+The shape of the raw P-value histogram tells us how the analysis worked and whether the assumptions for multiple hypothesis testing are met. 
+Uploaded raw P-values allow us to directly evaluate the quality of published RNA-seq study.
+In case of raw sequence read counts, and with correct experiment metadata, we can easily reproduce the model fitting part of the study. Experiment metadata is necessary to infer groups to be used in model. Whereas, uploaded normalized sequence read counts (CPM, RPKM) can be only used to visualize differential expression, reproduction of an analysis is not possible, as there is no way back to original discrete counts. So you have to go back to raw data files. There is really no point to upload only normalized counts in order to fulfill the requirement of final processed data, it just shows ignorance.
+
+> Uploaded raw P-values allow directly evaluate the quality of published RNA-seq or other omics study
+
+If P-value histogram has some weird shape with peaks and large bumps in the middle and gaps, one has to look more carefully on the data and make adjustment to the analysis, throw out uninformative features with low counts and/or consult statistician. Surprisingly, there is not much info available about the common shapes of P-value histograms and what they mean -- is everything alright or should you be concerned. Here one excellent blog post how to [interpret P-value histogram](http://varianceexplained.org/statistics/interpreting-pvalue-histogram/).
+
+As a side note, [`recount2` project](https://jhubiostatistics.shinyapps.io/recount/) just made available RNA-seq gene and exon level raw counts from 2000+ different studies, all processed using the same RNA-Rail platform. Very cool! Intriguingly, `reshape` vignette includes an example analysis that, based on its P-value histogram, needs some reconsideration (Figure \@ref(fig:recount-hist)).
+
+```{r recount-hist, echo=FALSE, fig.align='left', fig.cap="Example P-value histogram from recount package vignette."}
+library(imager)
+tab <- load.image("recount-p-value-histogram.png")
+plot(tab, axes = F)
+```
+
+
+##Getting names of uploaded supplementary files
+First, we need to identify supplementary files of interest. We could use `getGEOSuppFiles` function from [Bioconductor package `GEOquery`](https://bioconductor.org/packages/release/bioc/html/GEOquery.html) to download supplementary files directly based on GEO Accession number. However, as we are going to do bulk download of large amount of potentially large files, we want to perform some preselection. We may want to remove certain file types or README files from our download to save time and hard-drive space. Therefore, we need supplementary file names first. For this, we use [`getDirListing`](https://github.com/Bioconductor-mirror/GEOquery/blob/master/R/getGEOSuppFiles.R) function from inside `getGEOSuppFiles` to download only file names.
+
+```{r getdirlisting}
+devtools::source_url("https://raw.githubusercontent.com/Bioconductor-mirror/GEOquery/master/R/getGEOSuppFiles.R")
+getDirListing
+```
+
+```{r load-ds, include=FALSE}
+load(file = "ds.RData")
+```
+
+
+`getDirListing` needs URL as an argument, we can get our URLs of interest from document summaries that we downloaded in [Part 1](/post/2017-05-16-geo-rna-seq-part-1/2017-05-16-geo-rna-seq/). URLs to the folders where supplementary files are kept in GEO database are stored in document summaries under variable `FTPLink`. 
+
+However, now we narrow down our query to include human and mouse datasets only: `expression profiling by high throughput sequencing[DataSet Type] AND (Homo sapiens[Organism] OR Mus musculus[Organism])`. This query retrieved `r nrow(ds)` GEO Series.
+
+```{r query-functions, include=FALSE}
+get_GEO_ids <- function(query, database = "gds", retmax = 500, ...){
+  url <- "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+  qres <- GET(url, query = list(db = database, term = query, retmax = retmax, ...))
+  rescont <- content(qres)
+  rescont %>% xml_find_all(xpath = "//Id") %>% xml_text()
+}
+
+get_docsums <- function(ids, database = "gds"){
+  url <- "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
+  
+  # Split UIDs into chunks of size max 500
+  chunkize <-  function(x, chunksize) {
+    split(x, ceiling(seq_along(x)/chunksize))
+  }
+  
+  UID_chunks <- chunkize(ids, 500)
+
+  get_qsums <- function(uid) {
+    GET(url, query = list(db = database, id = paste(uid, collapse = ",")))
+  }
+  
+  qsums <- lapply(UID_chunks, get_qsums) 
+  lapply(qsums, content)
+}
+
+library(XML)
+extract_docsums <- function(xmldocument){
+  
+  d <-  xmlParse(xmldocument) %>% xmlRoot
+  
+  items <- d[1]$DocSum %>% 
+    xmlSApply(xmlGetAttr, name = "Name") %>% 
+    unlist() %>% 
+    c("Id",.) %>% 
+    unname()
+  
+  d %>% 
+    xmlSApply(. %>% getChildrenStrings) %>% 
+    t %>% 
+    as_data_frame %>% 
+    set_colnames(items)
+}
+```
+
+```{r query}
+library(tidyverse)
+select(ds, Accession, FTPLink)
+```
+
+We further narrow down our query by using only submissions with publication dates (`PDAT`) in period between Christmas 2015 and end of March 2017. This period in not completely arbitrary, I just did run the script first time in Christmas 2016 and was looking for datasets published within last year. This filter leaves us with `r nrow(filter(ds, PDAT>="2015/12/24", PDAT<="2017/03/31"))` GEO Series. Scraping all these FTPLinks one-by-one for file names can take considerable time: 5-7 hours. 
+
+```{r download-suppfilenames, eval=FALSE}
+library(RCurl) # getURL()
+suppfilenames <- ds %>% 
+  filter(PDAT>="2015/12/24", PDAT<="2017/03/31") %>%
+  mutate(SuppFileNames = map(FTPLink, ~try(getDirListing(file.path(.x, "suppl/")))))
+```
+
+```{r load-suppfilenames, include=FALSE}
+load(file = "suppfilenames_2017-04-01.RData")
+```
+
+In the end we have a `data_frame` with supplementary file names and of course with some fails:
+```{r suppfilenames}
+select(suppfilenames, Accession, SuppFileNames)
+```
+
+Let's have a closer look at failed downloads. As expected, recent submissions lack supplementary files, but also many submissions that are well over year old (Figure \@ref(fig:try-errors)).
+```{r try-errors, fig.cap="Recent submissions lack supplementary files or they are under embargo. Distribution of GEO series with missing supplementary files from period 2015-12-24 to 2017-3-31."}
+notavailable <- select(suppfilenames, Accession, SuppFileNames, PDAT) %>% 
+  filter(map_lgl(SuppFileNames, ~inherits(.x, "try-error")))
+notavailable
+
+# Range of GEO series with missing supplementary files 
+range(notavailable$PDAT)
+
+library(ggplot2)
+library(lubridate)
+notavailable %>% 
+  mutate(PDAT=ymd(PDAT)) %>% 
+  ggplot(aes(PDAT)) + 
+  geom_histogram() +
+  xlab("GEO series publication date (PDAT)")
+```
+
+Here we specify files with name extensions that we are NOT going to download and analyse. We filter these potentially uninteresting supplemental files out from our sample. Here they are uninteresting for us because we know that they don't contain P-values or raw counts.
+```{r out}
+library(stringr)
+out <- c("tar","gtf","bed","bigbed","bedgraph","bw","wig","hic","gct(x)?","tdf",
+         "gff","pdf","png","zip","sif","narrowpeak","gff3","fa")
+suppfiles_of_interest <- suppfilenames %>% 
+  unnest(SuppFileNames) %>%
+  filter(!str_detect(tolower(SuppFileNames), "filelist|error|readme|annotation|raw.tar$|[:punct:]hic|hdf5$"),
+         !str_detect(tolower(SuppFileNames), paste0(out, "(\\.gz)?$", collapse = "|"))) %>% 
+  select(Accession, SuppFileNames, FTPLink, PDAT) %>% 
+  mutate(filext = str_extract(tolower(SuppFileNames), "\\.[:alpha:]+([:punct:][bgz2]+)?$")) 
+select(suppfiles_of_interest, Accession, SuppFileNames)
+```
+
+## Downloading supplementary files
+Function to download GEO supplementary files. If script is interrupted and re executed, the function checks whether local file is already present. When download fails, function displays Ups! error message and proceeds with the next file. Function prints out the file name it is currently working with, so the progress can be monitored.
+```{r download-geo-supp-fun, eval=FALSE}
+download_geo_supp <- function(ftplink, suppfile, destdir) {
+  message(suppfile)
+  
+  fp <- file.path(ftplink, "suppl", suppfile)
+  dest <- file.path(destdir, suppfile)
+  
+  if(file.exists(dest)){
+    message("File exists!")
+    return()
+  }
+  
+  out <- try(download.file(fp, dest))
+  if(inherits(out, "try-error")){
+    message("Ups! Something went wrong!")
+  }
+}
+```
+
+Here we list local files and remove already downloaded files from download list. Download takes time and downloaded files occupy about 17GB of your hard drive. 
+```{r download, eval=FALSE}
+local_files <- list.files("data/counts") # we store downloaded files in data/counts subfolder
+missing_local <- suppfiles_of_interest %>% 
+  filter(!str_replace(tolower(SuppFileNames),"\\.(gz|bz2)$","") %in% 
+           str_replace(tolower(local_files), "\\.(gz|bz2)$",""))
+
+# Download supp files
+missing_local %>% 
+  mutate(map2(FTPLink, SuppFileNames, ~ download_geo_supp(.x, .y, "data/counts")))
+```
+
+## Downloading experiment metadata
+Experiment metadata of GEO series is stored in series matrix files. To download series matrix files, we can use `getGEO` function from `GEOquery` package. Let's keep series matrix files in subfolder `data/matrix`.
+
+```{r download-matrix, eval=FALSE}
+# Downloaded series matrix files are kept in folder data/matrix
+matrixfiles_acc <- data_frame(matrixfile = list.files("data/matrix/")) %>% 
+  mutate(Accession = str_extract(matrixfile, "GSE[[:digit:]]*"))
+
+# Downloaded supplementary files are kept in folder data/counts
+suppfiles_acc <- data_frame(SuppFileNames=list.files("data/counts/")) %>% 
+  mutate(Accession = str_extract(SuppFileNames, "GSE[[:digit:]]*")) %>% 
+  nest(SuppFileNames)
+
+# Download missing series matrix files
+gsematrix <- ds %>% 
+  filter(PDAT>="2015/12/24", PDAT<="2017/03/31") %>%
+  select(Accession, PDAT) %>% 
+  distinct %>% 
+  left_join(suppfiles_acc,.) %>% # keep only GEOs with supplemental files
+  anti_join(matrixfiles_acc) %>% # supplemental file GEOs missing series matrix file
+  mutate(gsem = map(Accession, ~ try(getGEO(GEO = .x, destdir = "data/matrix/", getGPL = FALSE))))
+
+# Missing series matrix files are behind password
+gsematrix %>% 
+  filter(map_lgl(gsem, ~inherits(.x, "try-error")))
+```
+
+Happy downloading!    
+
+Next post in the series will be about importing and munging downloaded supplementary files for further analysis.
+
+
+_**Last update:**_ `r format.Date(Sys.time())`

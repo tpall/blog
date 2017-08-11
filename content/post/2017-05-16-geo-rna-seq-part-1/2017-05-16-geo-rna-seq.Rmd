@@ -1,13 +1,18 @@
 ---
 title: "RNA-seq experiments quality, part 1: quering GEO database from R using E-Utils"
 author: "Taavi Päll, Ülo Maiväli"
-date: "2017-05-17"
+date: "2017-05-16"
 categories: ["R"]
 tags: ["RNA-seq", "NCBI GEO", "P-value"]
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(collapse = TRUE, message=FALSE, dev='svg')
+knitr::opts_chunk$set(collapse = TRUE, message=FALSE, warning=FALSE, dev='svg')
+library(tidyverse)
+library(magrittr)
+library(httr)
+library(xml2)
+library(XML)
 ```
 
 _This the first post in series describing the analysis of P-value histograms from RNA sequencing experiments uploaded into NCBI GEO database as supplemental data._
@@ -37,9 +42,9 @@ The uncertainty in identifying true discoveries remains in case reproduction and
 In the long run, randomness can be controlled by assuming false discovery rate (FDR).
 As an other arm, trust into obtained P-value can be increased by estimating prospectively the probability of success, the power of detecting true effects.
 Statistical power is used to set the sensitivity of the experimental system in the context of many consecutive measurements.  
-However, power is mostly not estimated or reported in published articles and the already conducted study cannot be used to estimate its power (Figure \@ref(fig:simulate-power)).
+However, power is mostly not estimated or reported in published articles and the already conducted study cannot be used to estimate its power (Figure \@ref(fig:power)).
 
-```{r simulate-power, fig.cap=caption, echo=FALSE}
+```{r power, fig.cap=caption, echo=FALSE, cache=TRUE}
 set.seed(20170518)
 pow_fun <- function(n, m, s){
   true_power <- power.t.test(n = n, m, s)$power
@@ -90,7 +95,7 @@ Let's say we are interested in total number of high throughput sequencing datase
 We can use following example query specifying study type: 'expression profiling by high throughput sequencing[DataSet Type]' to get UIDs for RNA-seq experiments (mostly). 
 Response contains xml content where we can extract our UIDs:
 
-```{r query}
+```{r query, cache=TRUE}
 library(tidyverse)
 library(magrittr) # %<>% and set_colnames()
 library(httr) # GET()
@@ -120,7 +125,7 @@ Document summary contains GEO Accession number and bunch of other info, like ser
 Large query must be split into smaller pieces, otherwise the query will freeze. 
 Here I submit multiple queries with chunk size of 500.
 
-```{r docsums}
+```{r docsums, cache=TRUE}
 # Function to document summaries for UIDs from NCBI
 get_docsums <- function(ids, database = "gds"){
   url <- "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
@@ -149,7 +154,7 @@ length(sumcont)
 
 After downloading, docsummaries needs to be extracted from XML format for further processing:
 
-```{r extract-docsums}
+```{r extract-docsums, cache=TRUE}
 library(XML)
 extract_docsums <- function(xmldocument){
   
@@ -229,21 +234,28 @@ load("2017-05-16-geo-rna-seq-pubmed-docsums.RData")
 I extract info from downloaded summaries, convert into data.frame and join pubmed data with GEO data using `PubMedIds`:
 ```{r munge-pubmed-data}
 # Extract document summaries
-pubmed_sums <- pubmed %>% mutate(docsums = map(docsums, ~try(extract_docsums(.x)), ))
+pubmed_sums <- pubmed %>% mutate(docsums = map(docsums, ~try(extract_docsums(.x), silent=T)))
 pubmed_sums %<>% 
   filter(!map_lgl(docsums, ~inherits(.x,"try-error"))) %>% 
   unnest
 # Merge with GEO doc summaries
 merged_ds <- left_join(select(pubmed_sums, -Id), select(ds, Id, Accession, PubMedIds, PDAT, GPL))
 # Parse dates into common format
-merged_ds <- mutate_at(merged_ds, vars(PubDate, PDAT), ymd) %>% 
-  select(Accession,PubMedIds,PubDate,PDAT,Source,LastAuthor,GPL)
+merged_ds <- mutate_at(merged_ds, vars(PDAT,PubDate, EPubDate), ymd) %>% 
+  select(Accession,PubMedIds,PDAT,PubDate,EPubDate,Source,LastAuthor,GPL)
+# If PubDate is missing, use EPubDate
+merged_ds %<>% 
+  mutate(PubDate = if_else(is.na(PubDate), EPubDate, PubDate))
+# Records still missing publication date
+no_pubdate <- filter(merged_ds, is.na(PubDate))
 # Calculate differences
 merged_ds %<>% mutate(pubdiff = PDAT-PubDate)
 ```
 
-Nice! In accordance with journal data sharing policies, majority of datasets are made public almost synchronously with article publication date (Figure \@ref(fig:pubdiff)).
-```{r pubdiff, fig.cap="Time periods between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of time periods. Right, scatterplot of dataset versus article publication dates."}
+Nice! In accordance with journal data sharing policies, majority of datasets are made public almost synchronously with article publication date (Figure \@ref(fig:pubdiff)). 
+`r n_distinct(select(no_pubdate, PubMedIds))` articles referencing `r n_distinct(select(no_pubdate, Accession))` GSE Series lack publication date in their document summaries.
+
+```{r pubdiff, fig.cap="Time periods between publication of GEO HT-sequencing dataset and article describing the study. Left, distribution of time periods. Right, scatterplot of dataset versus article publication dates. Blue line, robust linear regression `MASS::rlm` fit."}
 library(grid)
 library(gridExtra)
 h <- ggplot(merged_ds, aes(pubdiff)) +
@@ -251,16 +263,19 @@ h <- ggplot(merged_ds, aes(pubdiff)) +
   xlab("Time difference in days") +
   ylab("Number of GEO Series")
 
+library(MASS) # rlm because of outliers
 p <- ggplot(merged_ds, aes(PubDate, PDAT)) +
   geom_point() +
   xlab("Article publication date") +
-  ylab("Dataset publication date")
+  ylab("Dataset publication date") +
+  geom_smooth(method = "rlm") 
 ggp <- lapply(list(h, p), ggplotGrob)
 ggp <- arrangeGrob(grobs = ggp, ncol = 2)
 grid.draw(ggp)
+detach("package:MASS", unload=TRUE) # masks dplyr::select()
 ```
 
-Top journals publishing high-throughput sequencing data (Figure \@ref(fig:top-journals)). 
+Top journals publishing high-throughput sequencing data is shown on Figure \@ref(fig:top-journals). 
 Interestingly, PLosOne is one of the top publishers of these studies.
 When we get there, it would be interesting to see if there are any quality differences between studies published in Nature and PLoSOne or publications ending up in Nature Communications instead of Nature.
 ```{r top-journals, fig.cap="Top 25 journals publishing high-throughput sequencing studies."}
@@ -272,7 +287,6 @@ top <- select(merged_ds, Accession, Source) %>%
 
 # Plot top25 publishers
 ggplot(top[1:25,], aes(Source, N)) + 
-  # geom_bar(stat = "identity") + 
   geom_point() +
   scale_x_discrete(limits = top$Source[1:25]) +
   scale_y_continuous(limits = c(0, 1200)) +
@@ -281,8 +295,67 @@ ggplot(top[1:25,], aes(Source, N)) +
   ylab("Number of articles")
 ```
 
+## Popular platform
+What are the most popular sequencing platforms in use:
+```{r popular-platforms}
+# Some dataset use more than one GPL (platform) 
+library(stringr)
+plat <- ds %>% 
+  select(Accession, GPL, PDAT, n_samples) %>% 
+  mutate(GPL = str_split(GPL,";")) %>% 
+  unnest()
+
+# Summarise platform submissions, filter out datasets with missing GPL info
+plat_sum <- plat %>% 
+  mutate(N = nchar(GPL)!=0) %>%
+  filter(N) %>% 
+  group_by(GPL) %>% 
+  arrange(GPL, PDAT) %>% 
+  mutate_at("N", cumsum)
+
+# Top 10 most popular platforms: to narrow down selection
+popular_gpl <- sort(table(plat$GPL), decreasing = T)
+top_gpl <- plat_sum %>% 
+  filter(GPL %in% names(popular_gpl[1:10])) 
+
+# GPL ids to names: add human readable names to platforms
+library(GEOquery)
+top_gpl_names <- top_gpl %>% 
+  select(GPL) %>% 
+  distinct() %>% 
+  mutate(title = map_chr(GPL, ~{gpl <- getGEO(paste0("GPL",.x)); gpl@header$title}))
+
+# Abbreviate species names
+abbr_species <- function(x){
+  sp <- paste(tail(unlist(str_extract_all(x, "\\b\\w")), 2), collapse = "")
+  replacement <- paste0("\\(", sp, "\\)")
+  str_replace(x, "\\(.*\\)", replacement)
+}
+
+top_gpl_names %<>% 
+  mutate(Platform = abbr_species(title))
+
+# Merge with publication data
+top_gpl %<>% left_join(top_gpl_names)
+```
+
+All top 10 most popular platforms come from Illumina (Figure \@ref(fig:plot-popular-platforms)).
+Interestingly, the number of human and mouse datasets sequenced using same platforms grow at very similar rate.
+```{r plot-popular-platforms, fig.cap="Submission of high-throughput sequencing datasets from top 10 most popular platforms. Hs, Homo sapiens; Mm, Mus musculus"}
+library(ggthemes)
+top_gpl %>%
+  filter(GPL%in%names(popular_gpl[1:10])) %>% 
+  ggplot(aes(ymd(PDAT), N, color = Platform)) +
+  geom_line(size=1) +
+  scale_color_tableau() +
+  ylab("Cumulative number of datasets") +
+  xlab("Publication date")
+```
+
 This is it, my first post. 
 Next post will be about identifying, downloading and importing of supplemental files for GEO Accessions.
+
+_**Last update:**_ 2017-05-23 11:35:31
 
 [^1]: The inability of reproducing, by using the original data, the original data analysis exactly.
 [^2]: The inability of reproducing, by new experiments, the original data approximately.
