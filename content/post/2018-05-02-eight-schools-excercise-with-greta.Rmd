@@ -1,0 +1,125 @@
+---
+title: Eight schools excercise with Greta
+author: Taavi Päll
+date: '2018-05-02'
+slug: eight-schools-excercise-with-greta
+categories:
+  - Bayes
+tags:
+  - mcmc
+  - bayes
+  - greta
+  - tensorflow
+description: ''
+topics: []
+---
+
+First time I encountered Greta on Twitter:
+
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Here&#39;s the latest post from RViews &quot;An Introduction to Greta&quot; <a href="https://t.co/g1uMNsMWCh">https://t.co/g1uMNsMWCh</a></p>&mdash; RStudio (@rstudio) <a href="https://twitter.com/rstudio/status/988466672779583488?ref_src=twsrc%5Etfw">April 23, 2018</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script> 
+
+
+I fell in love from the first sight. I like the beauty. I think it's the expressiveness. I followed the first link in "An Introduction to Greta" by Joseph Rickert to `greta` [webpage](https://greta-dev.github.io/greta/).
+
+After installation and pasting in [get_started](https://greta-dev.github.io/greta/get_started.html) code I wanted to explore Greta on my own. Nothing too dangerous. Eight schools seemed like a good topic for the first date. Eight schools is very well covered in Bayes/Stan  blogs - [everything-need-know-bayesian-statistics-learned-eight-schools](http://andrewgelman.com/2014/01/21/everything-need-know-bayesian-statistics-learned-eight-schools/), [RStan-Getting-Started](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started), [divergences_and_bias](http://mc-stan.org/users/documentation/case-studies/divergences_and_bias.html), so my intellectual input would be very small and is limited only to translating Stan code to Greta.
+
+Let's get started! I assume that you have installed `greta` and its dependency [tensorflow](https://greta-dev.github.io/greta/get_started.html#installation) by now.
+
+
+```{r}
+library(greta)
+```
+
+## Data
+
+**Eight schools dataset** is nice and small with estimated treatment effect `y` and its standard deviation `sigma` of Scholastic Aptitude Test (SAT) scores for 8 schools:
+```{r}
+y <- c(28,  8, -3,  7, -1,  1, 18, 12)
+sigma <- c(15, 10, 16, 11,  9, 11, 10, 18)
+```
+
+We need to **convert R vectors to greta array** for use as data in a greta model:
+```{r}
+y <- as_data(y)
+sigma <- as_data(sigma)
+```
+
+## Model
+
+[**This is two-level normal model**](http://www.stat.columbia.edu/~gelman/research/published/tau9.pdf) of data `y_ij` with group-level effects `alpha_j` .
+
+
+`y_ij ~ N(mu + alpha_j, sigma_y)` *i=1,...,n_j*, *j=1,...,J*  
+
+`alpha_j ~ N(0, sigma_alpha)` *j=1,...,J*
+
+
+We are going to use more efficient [parametrisation](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started), where alpha_j is represented as product of two new parameters `tau` and `eta`:
+
+`y_ij ~ N(mu + tau * eta_j, sigma_y)` *i=1,...,n_j*, *j=1,...,J*  
+
+`eta_j ~ N(0, sigma_eta)` *j=1,...,J*
+
+## Priors
+
+Based on this, we **define variables and priors** by creating greta arrays to represent the parameters in our model.
+
+`mu` comes from normal distribution. `tau` comes from half-cauchy (only positive values are allowed and therefore distribution is truncated at zero), and `eta` comes again from normal distribution, but we specify different eta for each of the eight schools:
+```{r}
+mu  <- normal(0, 5)
+tau <- cauchy(0, 5, truncation = c(0, Inf))
+eta <- normal(0, 1, dim = 8)
+```
+
+## Operations
+
+Here we specify **operations** in greta notation (transformed parameters in stan) to combine our parameters using mathematical operators:
+```{r}
+theta <- mu + tau * eta
+```
+
+## Likelihood
+
+To perform statistical inference on this model, we need to link it to our observed dependent data. We need to **define a likelihood for the observed** estimated treatment effects `y`.
+
+Likelihood distribution is specified like so:
+```{r}
+distribution(y) <- normal(theta, sigma)
+```
+
+## Collect parameters to model object
+
+Now that we have define priors and likelihood, we need to put everything together into greta model that we are going to use for sampling:
+```{r}
+m <- model(mu, tau, eta, theta)
+```
+
+We can plot out nice [model graph](https://greta-dev.github.io/greta/get_started.html#plotting). We have prior parameters/data for probability distributions (squares and rhombs), model parameters (rings) connected by deterministic (solid arrow) or stochastic (dashed arrow) links:
+```{r}
+library(DiagrammeR)
+gr <- plot(m)
+render_graph(gr)
+```
+
+## Sampling
+
+We have a greta model that will give us the joint density for a candidate set of values, so we can use that to carry out inference on the model. Here we're using 1000 steps of the Hamiltonian Monte Carlo (HMC) algorithm, by default sampler uses 100 steps for warmup.
+```{r}
+draws <- mcmc(m, n_samples = 1000)
+```
+
+`draws` is an mcmc.list object, from the coda R package. So, it's possible to use  
+```{r}
+summary(draws)
+```
+
+MCMC chain and the parameter estimates can be plotted using `bayesplot` package:
+```{r}
+library(bayesplot)
+mcmc_trace(draws)
+mcmc_intervals(draws)
+```
+
+
+
+P.S. Sorry, I could not get math working.

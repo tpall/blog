@@ -1,0 +1,158 @@
+---
+title: Eight schools excercise with Greta
+author: Taavi Päll
+date: '2018-05-02'
+slug: eight-schools-excercise-with-greta
+categories:
+  - Bayes
+tags:
+  - mcmc
+  - bayes
+  - greta
+  - tensorflow
+description: ''
+topics: []
+---
+
+<script src="/rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="/rmarkdown-libs/viz/viz.js"></script>
+<link href="/rmarkdown-libs/DiagrammeR-styles/styles.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/grViz-binding/grViz.js"></script>
+
+
+<p>First time I encountered Greta on Twitter:</p>
+<blockquote class="twitter-tweet" data-lang="en">
+<p lang="en" dir="ltr">
+Here's the latest post from RViews “An Introduction to Greta” <a href="https://t.co/g1uMNsMWCh">https://t.co/g1uMNsMWCh</a>
+</p>
+— RStudio (<span class="citation">@rstudio</span>) <a href="https://twitter.com/rstudio/status/988466672779583488?ref_src=twsrc%5Etfw">April 23, 2018</a>
+</blockquote>
+<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+<p>I fell in love from the first sight. I like the beauty. I think it’s the expressiveness. I followed the first link in “An Introduction to Greta” by Joseph Rickert to <code>greta</code> <a href="https://greta-dev.github.io/greta/">webpage</a>.</p>
+<p>After installation and pasting in <a href="https://greta-dev.github.io/greta/get_started.html">get_started</a> code I wanted to explore Greta on my own. Nothing too dangerous. Eight schools seemed like a good topic for the first date. Eight schools is very well covered in Bayes/Stan blogs - <a href="http://andrewgelman.com/2014/01/21/everything-need-know-bayesian-statistics-learned-eight-schools/">everything-need-know-bayesian-statistics-learned-eight-schools</a>, <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started">RStan-Getting-Started</a>, <a href="http://mc-stan.org/users/documentation/case-studies/divergences_and_bias.html">divergences_and_bias</a>, so my intellectual input would be very small and is limited only to translating Stan code to Greta.</p>
+<p>Let’s get started! I assume that you have installed <code>greta</code> and its dependency <a href="https://greta-dev.github.io/greta/get_started.html#installation">tensorflow</a> by now.</p>
+<pre class="r"><code>library(greta)</code></pre>
+<pre><code>## 
+## Attaching package: &#39;greta&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:stats&#39;:
+## 
+##     binomial, poisson</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
+## 
+##     %*%, backsolve, beta, colMeans, colSums, diag, forwardsolve,
+##     gamma, rowMeans, rowSums, sweep</code></pre>
+<div id="data" class="section level2">
+<h2>Data</h2>
+<p><strong>Eight schools dataset</strong> is nice and small with estimated treatment effect <code>y</code> and its standard deviation <code>sigma</code> of Scholastic Aptitude Test (SAT) scores for 8 schools:</p>
+<pre class="r"><code>y &lt;- c(28,  8, -3,  7, -1,  1, 18, 12)
+sigma &lt;- c(15, 10, 16, 11,  9, 11, 10, 18)</code></pre>
+<p>We need to <strong>convert R vectors to greta array</strong> for use as data in a greta model:</p>
+<pre class="r"><code>y &lt;- as_data(y)
+sigma &lt;- as_data(sigma)</code></pre>
+</div>
+<div id="model" class="section level2">
+<h2>Model</h2>
+<p><a href="http://www.stat.columbia.edu/~gelman/research/published/tau9.pdf"><strong>This is two-level normal model</strong></a> of data <code>y_ij</code> with group-level effects <code>alpha_j</code> .</p>
+<p><code>y_ij ~ N(mu + alpha_j, sigma_y)</code> <em>i=1,…,n_j</em>, <em>j=1,…,J</em></p>
+<p><code>alpha_j ~ N(0, sigma_alpha)</code> <em>j=1,…,J</em></p>
+<p>We are going to use more efficient <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started">parametrisation</a>, where alpha_j is represented as product of two new parameters <code>tau</code> and <code>eta</code>:</p>
+<p><code>y_ij ~ N(mu + tau * eta_j, sigma_y)</code> <em>i=1,…,n_j</em>, <em>j=1,…,J</em></p>
+<p><code>eta_j ~ N(0, sigma_eta)</code> <em>j=1,…,J</em></p>
+</div>
+<div id="priors" class="section level2">
+<h2>Priors</h2>
+<p>Based on this, we <strong>define variables and priors</strong> by creating greta arrays to represent the parameters in our model.</p>
+<p><code>mu</code> comes from normal distribution. <code>tau</code> comes from half-cauchy (only positive values are allowed and therefore distribution is truncated at zero), and <code>eta</code> comes again from normal distribution, but we specify different eta for each of the eight schools:</p>
+<pre class="r"><code>mu  &lt;- normal(0, 5)
+tau &lt;- cauchy(0, 5, truncation = c(0, Inf))
+eta &lt;- normal(0, 1, dim = 8)</code></pre>
+</div>
+<div id="operations" class="section level2">
+<h2>Operations</h2>
+<p>Here we specify <strong>operations</strong> in greta notation (transformed parameters in stan) to combine our parameters using mathematical operators:</p>
+<pre class="r"><code>theta &lt;- mu + tau * eta</code></pre>
+</div>
+<div id="likelihood" class="section level2">
+<h2>Likelihood</h2>
+<p>To perform statistical inference on this model, we need to link it to our observed dependent data. We need to <strong>define a likelihood for the observed</strong> estimated treatment effects <code>y</code>.</p>
+<p>Likelihood distribution is specified like so:</p>
+<pre class="r"><code>distribution(y) &lt;- normal(theta, sigma)</code></pre>
+</div>
+<div id="collect-parameters-to-model-object" class="section level2">
+<h2>Collect parameters to model object</h2>
+<p>Now that we have define priors and likelihood, we need to put everything together into greta model that we are going to use for sampling:</p>
+<pre class="r"><code>m &lt;- model(mu, tau, eta, theta)</code></pre>
+<p>We can plot out nice <a href="https://greta-dev.github.io/greta/get_started.html#plotting">model graph</a>. We have prior parameters/data for probability distributions (squares and rhombs), model parameters (rings) connected by deterministic (solid arrow) or stochastic (dashed arrow) links:</p>
+<pre class="r"><code>library(DiagrammeR)
+gr &lt;- plot(m)
+render_graph(gr)</code></pre>
+<div id="htmlwidget-1" style="width:672px;height:480px;" class="grViz html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"diagram":"digraph {\n\ngraph [layout = \"dot\",\n       outputorder = \"edgesfirst\",\n       bgcolor = \"white\",\n       rankdir = \"LR\"]\n\nnode [fontname = \"Helvetica\",\n      fontsize = \"10\",\n      shape = \"circle\",\n      fixedsize = \"true\",\n      width = \"0.5\",\n      style = \"filled\",\n      fillcolor = \"aliceblue\",\n      color = \"gray70\",\n      fontcolor = \"gray50\"]\n\nedge [fontname = \"Helvetica\",\n     fontsize = \"8\",\n     len = \"1.5\",\n     color = \"gray80\",\n     arrowsize = \"0.5\"]\n\n  \"1\" [label = \"mu\n\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"circle\", color = \"#E0D2EE\", width = \"0.6\", height = \"0.48\", fillcolor = \"#F4F0F9\"] \n  \"2\" [label = \"normal\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"diamond\", color = \"#B797D7\", width = \"1\", height = \"0.8\", fillcolor = \"#E0D2EE\"] \n  \"3\" [label = \"0\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"square\", color = \"#E0D2EE\", width = \"0.5\", height = \"0.4\", fillcolor = \"#FFFFFF\"] \n  \"4\" [label = \"5\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"square\", color = \"#E0D2EE\", width = \"0.5\", height = \"0.4\", fillcolor = \"#FFFFFF\"] \n  \"5\" [label = \"theta\n\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"circle\", color = \"lightgray\", width = \"0.2\", height = \"0.16\", fillcolor = \"#D3D3D3\"] \n  \"6\" [label = \"normal\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"diamond\", color = \"#B797D7\", width = \"1\", height = \"0.8\", fillcolor = \"#E0D2EE\"] \n  \"7\" [label = \"sigma\n\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"square\", color = \"#E0D2EE\", width = \"0.5\", height = \"0.4\", fillcolor = \"#FFFFFF\"] \n  \"8\" [label = \"y\n\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"square\", color = \"#E0D2EE\", width = \"0.5\", height = \"0.4\", fillcolor = \"#FFFFFF\"] \n  \"9\" [label = \"\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"circle\", color = \"lightgray\", width = \"0.2\", height = \"0.16\", fillcolor = \"#D3D3D3\"] \n  \"10\" [label = \"tau\n\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"circle\", color = \"#E0D2EE\", width = \"0.6\", height = \"0.48\", fillcolor = \"#F4F0F9\"] \n  \"11\" [label = \"cauchy\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"diamond\", color = \"#B797D7\", width = \"1\", height = \"0.8\", fillcolor = \"#E0D2EE\"] \n  \"12\" [label = \"0\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"square\", color = \"#E0D2EE\", width = \"0.5\", height = \"0.4\", fillcolor = \"#FFFFFF\"] \n  \"13\" [label = \"5\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"square\", color = \"#E0D2EE\", width = \"0.5\", height = \"0.4\", fillcolor = \"#FFFFFF\"] \n  \"14\" [label = \"eta\n\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"circle\", color = \"#E0D2EE\", width = \"0.6\", height = \"0.48\", fillcolor = \"#F4F0F9\"] \n  \"15\" [label = \"normal\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"diamond\", color = \"#B797D7\", width = \"1\", height = \"0.8\", fillcolor = \"#E0D2EE\"] \n  \"16\" [label = \"0\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"square\", color = \"#E0D2EE\", width = \"0.5\", height = \"0.4\", fillcolor = \"#FFFFFF\"] \n  \"17\" [label = \"1\", fontcolor = \"#8960B3\", fontsize = \"12\", penwidth = \"2\", shape = \"square\", color = \"#E0D2EE\", width = \"0.5\", height = \"0.4\", fillcolor = \"#FFFFFF\"] \n\"1\"->\"5\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"add\", style = \"solid\"] \n\"2\"->\"1\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", penwidth = \"3\", style = \"dashed\"] \n\"3\"->\"2\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"mean\", style = \"solid\"] \n\"4\"->\"2\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"sd\", style = \"solid\"] \n\"5\"->\"6\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"mean\", style = \"solid\"] \n\"6\"->\"8\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", penwidth = \"3\", style = \"dashed\"] \n\"7\"->\"6\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"sd\", style = \"solid\"] \n\"9\"->\"5\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"add\", style = \"solid\"] \n\"10\"->\"9\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"multiply\", style = \"solid\"] \n\"11\"->\"10\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", penwidth = \"3\", style = \"dashed\"] \n\"12\"->\"11\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"location\", style = \"solid\"] \n\"13\"->\"11\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"scale\", style = \"solid\"] \n\"14\"->\"9\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"multiply\", style = \"solid\"] \n\"15\"->\"14\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", penwidth = \"3\", style = \"dashed\"] \n\"16\"->\"15\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"mean\", style = \"solid\"] \n\"17\"->\"15\" [color = \"Gainsboro\", fontname = \"Helvetica\", fontcolor = \"gray\", fontsize = \"11\", penwidth = \"3\", label = \"sd\", style = \"solid\"] \n}","config":{"engine":"dot","options":null}},"evals":[],"jsHooks":[]}</script>
+</div>
+<div id="sampling" class="section level2">
+<h2>Sampling</h2>
+<p>We have a greta model that will give us the joint density for a candidate set of values, so we can use that to carry out inference on the model. Here we’re using 1000 steps of the Hamiltonian Monte Carlo (HMC) algorithm, by default sampler uses 100 steps for warmup.</p>
+<pre class="r"><code>draws &lt;- mcmc(m, n_samples = 1000)</code></pre>
+<p><code>draws</code> is an mcmc.list object, from the coda R package. So, it’s possible to use</p>
+<pre class="r"><code>summary(draws)</code></pre>
+<pre><code>## 
+## Iterations = 1:1000
+## Thinning interval = 1 
+## Number of chains = 1 
+## Sample size per chain = 1000 
+## 
+## 1. Empirical mean and standard deviation for each variable,
+##    plus standard error of the mean:
+## 
+##            Mean     SD Naive SE Time-series SE
+## mu      4.35124 3.3043  0.10449        0.05439
+## tau     3.78963 3.4693  0.10971        0.10300
+## eta1    0.31282 0.9725  0.03075        0.02403
+## eta2    0.13914 0.8930  0.02824        0.04109
+## eta3   -0.11416 0.9793  0.03097        0.02733
+## eta4    0.06440 0.9379  0.02966        0.01962
+## eta5   -0.15949 0.9051  0.02862        0.01882
+## eta6   -0.04545 0.9620  0.03042        0.03822
+## eta7    0.36604 0.9431  0.02982        0.01384
+## eta8    0.09029 1.0033  0.03173        0.03173
+## theta1  6.34915 5.7475  0.18175        0.15533
+## theta2  5.13281 4.6168  0.14600        0.13480
+## theta3  3.72471 5.3357  0.16873        0.13203
+## theta4  4.68494 4.7919  0.15153        0.11231
+## theta5  3.40023 4.6982  0.14857        0.11387
+## theta6  3.97732 4.6816  0.14805        0.14104
+## theta7  6.38071 5.0401  0.15938        0.11763
+## theta8  4.84698 5.4694  0.17296        0.14833
+## 
+## 2. Quantiles for each variable:
+## 
+##           2.5%     25%      50%    75%  97.5%
+## mu     -2.2835  2.1675  4.41776 6.5087 10.676
+## tau     0.1469  1.3362  2.85081 5.0454 12.780
+## eta1   -1.7407 -0.2989  0.33837 0.9840  2.143
+## eta2   -1.6178 -0.4274  0.13751 0.7642  1.819
+## eta3   -2.0444 -0.7768 -0.07093 0.5270  1.725
+## eta4   -1.7048 -0.5595  0.06489 0.6780  1.914
+## eta5   -1.9532 -0.7343 -0.15952 0.4449  1.502
+## eta6   -1.8410 -0.6699 -0.08501 0.5687  1.898
+## eta7   -1.5129 -0.2344  0.40768 0.9570  2.223
+## eta8   -1.9404 -0.5501  0.08436 0.7717  2.016
+## theta1 -2.8583  2.8874  5.54641 9.1636 21.209
+## theta2 -3.0225  1.9353  5.03248 7.7144 14.979
+## theta3 -8.8136  1.0220  4.06954 7.1374 13.299
+## theta4 -4.5575  1.6061  4.55727 7.7030 14.514
+## theta5 -7.2410  0.9678  3.77670 6.3568 11.785
+## theta6 -6.1868  1.3039  4.14622 6.9138 12.433
+## theta7 -1.8215  3.1242  5.78990 9.0194 18.092
+## theta8 -6.0596  1.6441  4.68650 7.9573 16.105</code></pre>
+<p>MCMC chain and the parameter estimates can be plotted using <code>bayesplot</code> package:</p>
+<pre class="r"><code>library(bayesplot)</code></pre>
+<pre><code>## This is bayesplot version 1.4.0</code></pre>
+<pre><code>## - Plotting theme set to bayesplot::theme_default()</code></pre>
+<pre><code>## - Online documentation at mc-stan.org/bayesplot</code></pre>
+<pre class="r"><code>mcmc_trace(draws)</code></pre>
+<p><img src="/post/2018-05-02-eight-schools-excercise-with-greta_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<pre class="r"><code>mcmc_intervals(draws)</code></pre>
+<p><img src="/post/2018-05-02-eight-schools-excercise-with-greta_files/figure-html/unnamed-chunk-11-2.png" width="672" /></p>
+<p>P.S. Sorry, I could not get math working.</p>
+</div>
