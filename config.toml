@@ -22,9 +22,9 @@ ignoreFiles = ["\\.Rmd$", "_files$", "_cache$", "\\.RData$"]
   # CSS name for highlight.js
   highlightjs = "foundation"
   dateFormat = "02 Jan 2006"
-  custom_js = ["http://yihui.name/js/math-code.js", 
+  custom_js = ["https://yihui.name/js/math-code.js", 
   "https://cdnjs.cloudflare.com/ajax/libs/zooming/1.4.2/zooming.min.js",
-  "http://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML"]
+  "https://cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML"]
 
 [menu]
   # Shown in the side menu.
