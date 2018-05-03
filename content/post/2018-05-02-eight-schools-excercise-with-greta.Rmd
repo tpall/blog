@@ -32,13 +32,13 @@ library(greta)
 
 ## Data
 
-**Eight schools dataset** is nice and small with estimated treatment effect `y` and its standard deviation `sigma` of Scholastic Aptitude Test (SAT) scores for 8 schools:
+*Eight schools* dataset is nice and small with estimated treatment effect **y** and its standard deviation **sigma** of Scholastic Aptitude Test (SAT) scores for 8 schools:
 ```{r}
 y <- c(28,  8, -3,  7, -1,  1, 18, 12)
 sigma <- c(15, 10, 16, 11,  9, 11, 10, 18)
 ```
 
-We need to **convert R vectors to greta array** for use as data in a greta model:
+We need to convert R vectors to greta array for use as data in a greta model:
 ```{r}
 y <- as_data(y)
 sigma <- as_data(sigma)
@@ -46,26 +46,25 @@ sigma <- as_data(sigma)
 
 ## Model
 
-[**This is two-level normal model**](http://www.stat.columbia.edu/~gelman/research/published/tau9.pdf) of data `y_ij` with group-level effects `alpha_j` .
-
-`$y_ij$`
+[This is two-level normal model](http://www.stat.columbia.edu/~gelman/research/published/tau9.pdf) of data **y_ij** with group-level effects **alpha_j** .
 
 `y_ij ~ N(mu + alpha_j, sigma_y)` *i=1,...,n_j*, *j=1,...,J*  
 
 `alpha_j ~ N(0, sigma_alpha)` *j=1,...,J*
 
-
-We are going to use more efficient [parametrisation](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started), where alpha_j is represented as product of two new parameters `tau` and `eta`:
+We are going to use more efficient [parametrisation](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started), where alpha_j is represented as product of two new parameters **tau** and **eta**:
 
 `y_ij ~ N(mu + tau * eta_j, sigma_y)` *i=1,...,n_j*, *j=1,...,J*  
 
 `eta_j ~ N(0, sigma_eta)` *j=1,...,J*
 
+(sorry for ugly math..)
+
 ## Priors
 
-Based on this, we **define variables and priors** by creating greta arrays to represent the parameters in our model.
+Based on these latter formula, we define variables and priors by creating greta arrays to represent the parameters in our model.
 
-`mu` comes from normal distribution. `tau` comes from half-cauchy (only positive values are allowed and therefore distribution is truncated at zero), and `eta` comes again from normal distribution, but we specify different eta for each of the eight schools:
+**mu** comes from normal distribution. **tau** comes from half-cauchy (only positive values are allowed and therefore distribution is truncated at zero), and **eta** comes again from normal distribution, but we specify different eta for each of the eight schools:
 ```{r}
 mu  <- normal(0, 5)
 tau <- cauchy(0, 5, truncation = c(0, Inf))
@@ -74,14 +73,14 @@ eta <- normal(0, 1, dim = 8)
 
 ## Operations
 
-Here we specify **operations** in greta notation (transformed parameters in stan) to combine our parameters using mathematical operators:
+Here we specify operations in greta notation (transformed parameters in stan) to combine our parameters using mathematical operators:
 ```{r}
 theta <- mu + tau * eta
 ```
 
 ## Likelihood
 
-To perform statistical inference on this model, we need to link it to our observed dependent data. We need to **define a likelihood for the observed** estimated treatment effects `y`.
+To perform statistical inference on this model, we need to link it to our observed dependent data. We define a likelihood for the observed estimated treatment effects `y`.
 
 Likelihood distribution is specified like so:
 ```{r}
@@ -109,7 +108,8 @@ We have a greta model that will give us the joint density for a candidate set of
 draws <- mcmc(m, n_samples = 1000)
 ```
 
-`draws` is an mcmc.list object, from the coda R package. So, it's possible to use  
+`draws` is an mcmc.list object, from the `coda` R package. So, it's possible to use any function that recognises this class of object.
+
 ```{r}
 summary(draws)
 ```
@@ -120,5 +120,3 @@ library(bayesplot)
 mcmc_trace(draws)
 mcmc_intervals(draws)
 ```
-
-P.S. Sorry, I could not get math working.
