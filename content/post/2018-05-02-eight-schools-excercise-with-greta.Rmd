@@ -38,7 +38,8 @@ y <- c(28,  8, -3,  7, -1,  1, 18, 12)
 sigma <- c(15, 10, 16, 11,  9, 11, 10, 18)
 ```
 
-We need to convert R vectors to greta array for use as data in a greta model:
+To use these two vectors as data in a greta model we need to convert them to greta arrays:
+
 ```{r}
 y <- as_data(y)
 sigma <- as_data(sigma)
