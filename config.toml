@@ -20,10 +20,8 @@ ignoreFiles = ["\\.Rmd$", "_files$", "_cache$", "\\.RData$"]
   googleAnalytics = "UA-99576455-1"
   disqus = "www-credibleinterval-ee"
   # CSS name for highlight.js
-  highlightjs = "androidstudio"
+  highlightjs = "foundation"
   dateFormat = "02 Jan 2006"
-  MathJaxCDN = "//cdn.bootcss.com"
-  MathJaxVersion = "2.7.1"
 
 [menu]
   # Shown in the side menu.
@@ -58,5 +56,5 @@ ignoreFiles = ["\\.Rmd$", "_files$", "_cache$", "\\.RData$"]
   #facebook = "taavipall"
   # instagram = "*"
   github = "tpall"
-  stackoverflow = "1657871"
-  linkedin = "palltaavi"
+  #stackoverflow = "1657871"
+  #linkedin = "palltaavi"
