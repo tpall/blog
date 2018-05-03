@@ -120,6 +120,4 @@ mcmc_trace(draws)
 mcmc_intervals(draws)
 ```
 
-
-
 P.S. Sorry, I could not get math working.
