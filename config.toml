@@ -22,6 +22,8 @@ ignoreFiles = ["\\.Rmd$", "_files$", "_cache$", "\\.RData$"]
   # CSS name for highlight.js
   highlightjs = "androidstudio"
   dateFormat = "02 Jan 2006"
+  MathJaxCDN = "//cdn.bootcss.com"
+  MathJaxVersion = "2.7.1"
 
 [menu]
   # Shown in the side menu.
