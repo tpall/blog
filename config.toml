@@ -16,7 +16,7 @@ ignoreFiles = ["\\.Rmd$", "_files$", "_cache$", "\\.RData$"]
 [params]
   # Shown in the home page
   subtitle = "Digging in molecular biomedicine data"
-  brand = "CI"
+  brand = "static/favicon-310.png"
   googleAnalytics = "UA-99576455-1"
   disqus = "www-credibleinterval-ee"
   # CSS name for highlight.js
