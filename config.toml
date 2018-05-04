@@ -23,7 +23,7 @@ ignoreFiles = ["\\.Rmd$", "_files$", "_cache$", "\\.RData$"]
   highlightjs = "foundation"
   dateFormat = "02 Jan 2006"
   custom_js = ["https://cdnjs.cloudflare.com/ajax/libs/zooming/1.4.2/zooming.min.js"]
-  footer = "&copy; Taavi Päll 2018 | [Github](https://github.com/tpall) | [Twitter](https://twitter.com/taavipall)"
+  footer = "&copy; TP 2018 | [Github](https://github.com/tpall) | [Twitter](https://twitter.com/taavipall)"
 
 
 [menu]
