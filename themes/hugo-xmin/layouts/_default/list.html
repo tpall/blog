@@ -8,6 +8,8 @@
 
 <ul>
   {{ range (where .Data.Pages "Section" "!=" "") }}
+  {{ $paginator := .Paginate .Data.Pages }}
+  {{ range $paginator.Pages }}
   <li>
     <span class="date">{{ .Date.Format "2006/01/02" }}</span>
     <a href="{{ .URL }}">{{ .Title }}</a>
@@ -16,3 +18,4 @@
 </ul>
 
 {{ partial "footer.html" . }}
+

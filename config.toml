@@ -3,28 +3,28 @@ languageCode = "en-us"
 title = "Developing analysis"
 theme = "hugo-xmin"
 author = "Taavi Päll"
-copyright = "&copy; 2017. All rights reserved."
 canonifyurls = true
 paginate = 10
-
+preserveTaxonomyNames = true
+footnotereturnlinkcontents = "↩"
 ignoreFiles = ["\\.Rmd$", "_files$", "_cache$", "\\.RData$"]
 
-[indexes]
-  tag = "tags"
-  topic = "topics"
+
+[permalinks]
+    post = "/post/:year/:month/:day/:slug/"
+    note = "/note/:year/:month/:day/:slug/"
 
 [params]
   # Shown in the home page
   subtitle = "Digging in molecular biomedicine data"
-  brand = "CI"
   googleAnalytics = "UA-99576455-1"
-  disqus = "www-credibleinterval-ee"
+  disqusShortname = "www-credibleinterval-ee"
   # CSS name for highlight.js
   highlightjs = "foundation"
   dateFormat = "02 Jan 2006"
-  custom_js = ["https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js", 
-  "https://example.com/mathjax/MathJax.js?config=TeX-AMS-MML_CHTML",
-  "https://cdnjs.cloudflare.com/ajax/libs/zooming/1.4.2/zooming.min.js"]
+  custom_js = ["https://cdnjs.cloudflare.com/ajax/libs/zooming/1.4.2/zooming.min.js"]
+  footer = "&copy; Taavi Päll 2018 | [Github](https://github.com/tpall) | [Twitter](https://twitter.com/taavipall)"
+
 
 [menu]
   # Shown in the side menu.
@@ -51,13 +51,3 @@ ignoreFiles = ["\\.Rmd$", "_files$", "_cache$", "\\.RData$"]
     pre = "<i class='fa fa-phone fa-fw'></i>"
     weight = 3
     url = "/contact/"
-
-[social]
-  # Link your social networking accouns to the side menu
-  # by entering your username or ID.
-  twitter = "taavipall"
-  #facebook = "taavipall"
-  # instagram = "*"
-  github = "tpall"
-  #stackoverflow = "1657871"
-  #linkedin = "palltaavi"

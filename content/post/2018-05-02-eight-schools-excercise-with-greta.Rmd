@@ -47,7 +47,7 @@ sigma <- as_data(sigma)
 
 ## Model
 
-[This is two-level normal model](http://www.stat.columbia.edu/~gelman/research/published/tau9.pdf) of data $y_ij$ with group-level effects $\alpha_j$ .
+[This is two-level normal model](http://www.stat.columbia.edu/~gelman/research/published/tau9.pdf) of data $y_{ij}$ with group-level effects $\alpha_j$ .
 
 $$y_{ij} \sim N(\mu + \alpha_j, \sigma_y)~~i=1,\dots,~n_j, j=1,\dots,J$$  
 $$\alpha_j \sim N(0, \sigma_\alpha)~~j=1,\dots,J$$

@@ -52,7 +52,7 @@ sigma &lt;- as_data(sigma)</code></pre>
 </div>
 <div id="model" class="section level2">
 <h2>Model</h2>
-<p><a href="http://www.stat.columbia.edu/~gelman/research/published/tau9.pdf">This is two-level normal model</a> of data <span class="math inline">\(y_ij\)</span> with group-level effects <span class="math inline">\(\alpha_j\)</span> .</p>
+<p><a href="http://www.stat.columbia.edu/~gelman/research/published/tau9.pdf">This is two-level normal model</a> of data <span class="math inline">\(y_{ij}\)</span> with group-level effects <span class="math inline">\(\alpha_j\)</span> .</p>
 <p><span class="math display">\[y_{ij} \sim N(\mu + \alpha_j, \sigma_y)~~i=1,\dots,~n_j, j=1,\dots,J\]</span><br />
 <span class="math display">\[\alpha_j \sim N(0, \sigma_\alpha)~~j=1,\dots,J\]</span></p>
 <p>We are going to use more efficient <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started">parametrisation</a>, where <span class="math inline">\(\alpha_j\)</span> is represented as product of two new parameters <span class="math inline">\(\tau\)</span> and <span class="math inline">\(\eta\)</span>:</p>
@@ -105,46 +105,46 @@ render_graph(gr)</code></pre>
 ##    plus standard error of the mean:
 ## 
 ##            Mean     SD Naive SE Time-series SE
-## mu      4.36370 3.3184  0.10494        0.05141
-## tau     3.50257 3.1679  0.10018        0.35683
-## eta1    0.29603 0.9188  0.02905        0.03021
-## eta2    0.15130 0.8818  0.02789        0.02225
-## eta3   -0.05955 0.9624  0.03043        0.03107
-## eta4    0.05366 0.8945  0.02829        0.02070
-## eta5   -0.15363 0.9193  0.02907        0.03171
-## eta6   -0.07532 0.9498  0.03004        0.01399
-## eta7    0.35685 0.9416  0.02978        0.03034
-## eta8    0.13894 0.9627  0.03044        0.02426
-## theta1  6.15519 5.6841  0.17975        0.21139
-## theta2  4.99836 4.5533  0.14399        0.08183
-## theta3  4.04913 4.9821  0.15755        0.17047
-## theta4  4.69458 4.6120  0.14584        0.07620
-## theta5  3.63468 4.6571  0.14727        0.13448
-## theta6  3.98083 5.0202  0.15875        0.11400
-## theta7  6.29936 5.3118  0.16797        0.19241
-## theta8  4.97647 5.3321  0.16862        0.09913
+## mu      4.41999 3.3835  0.10700        0.04916
+## tau     3.66488 3.1328  0.09907        0.08798
+## eta1    0.32018 0.9640  0.03048        0.02394
+## eta2    0.10683 0.9315  0.02946        0.01720
+## eta3   -0.10183 0.9977  0.03155        0.01188
+## eta4    0.07661 0.9417  0.02978        0.01537
+## eta5   -0.19127 0.9337  0.02953        0.02557
+## eta6   -0.07693 0.9283  0.02935        0.02523
+## eta7    0.37023 0.9808  0.03102        0.01665
+## eta8    0.10169 0.9707  0.03070        0.04772
+## theta1  6.20317 5.5854  0.17663        0.14157
+## theta2  5.08417 4.7493  0.15019        0.09803
+## theta3  3.87128 5.0298  0.15905        0.12167
+## theta4  4.75538 4.9721  0.15723        0.11272
+## theta5  3.54405 4.6514  0.14709        0.11038
+## theta6  4.04317 4.8541  0.15350        0.13519
+## theta7  6.55150 5.4725  0.17306        0.12886
+## theta8  4.90535 5.3562  0.16938        0.17198
 ## 
 ## 2. Quantiles for each variable:
 ## 
-##            2.5%     25%      50%    75%  97.5%
-## mu     -2.31122  2.2560  4.33692 6.5561 11.164
-## tau     0.02778  1.0467  2.81416 5.1032 11.664
-## eta1   -1.44115 -0.3289  0.27336 0.9338  2.091
-## eta2   -1.65204 -0.4649  0.22013 0.7535  1.850
-## eta3   -1.90598 -0.7132 -0.04901 0.5343  1.877
-## eta4   -1.68009 -0.5392  0.06667 0.6893  1.747
-## eta5   -1.96976 -0.7652 -0.13945 0.4195  1.684
-## eta6   -1.86807 -0.7547 -0.05544 0.6120  1.712
-## eta7   -1.50237 -0.2730  0.34093 1.0413  2.064
-## eta8   -1.67739 -0.5388  0.14972 0.7952  2.015
-## theta1 -3.46941  2.7981  5.58982 8.7139 19.467
-## theta2 -3.68412  2.0514  4.79466 7.8221 14.323
-## theta3 -6.34771  1.1306  4.35801 7.0174 13.294
-## theta4 -4.41621  2.0587  4.49617 7.5106 14.068
-## theta5 -6.38756  1.0031  3.81691 6.5375 12.027
-## theta6 -6.75651  1.0966  4.04573 7.0255 13.754
-## theta7 -3.21940  2.8882  5.79979 8.8860 18.139
-## theta8 -5.89734  1.9780  4.80303 8.1593 15.624</code></pre>
+##          2.5%     25%      50%    75%  97.5%
+## mu     -2.115  2.1934  4.44570 6.3953 11.287
+## tau     0.184  1.4164  2.81378 5.0309 12.233
+## eta1   -1.602 -0.3129  0.32861 0.9875  2.110
+## eta2   -1.713 -0.4727  0.11499 0.7071  1.885
+## eta3   -2.056 -0.7716 -0.10134 0.5497  1.863
+## eta4   -1.839 -0.5486  0.10541 0.6944  1.903
+## eta5   -2.034 -0.7978 -0.20241 0.4059  1.656
+## eta6   -1.870 -0.6799 -0.06987 0.5023  1.830
+## eta7   -1.539 -0.3318  0.40136 1.0757  2.153
+## eta8   -1.826 -0.5258  0.15042 0.7497  1.984
+## theta1 -3.130  2.6685  5.36729 8.9644 19.829
+## theta2 -3.980  2.0018  4.84128 7.8792 15.324
+## theta3 -7.036  1.1238  3.91047 6.9806 13.755
+## theta4 -5.561  1.8840  4.61607 7.4645 15.604
+## theta5 -6.628  0.8906  3.66715 6.4629 12.495
+## theta6 -5.266  1.3047  4.16499 7.1935 13.447
+## theta7 -1.929  2.8156  5.74359 9.4510 18.653
+## theta8 -5.350  1.7469  4.59658 7.6252 16.461</code></pre>
 <p>MCMC chain and the parameter estimates can be plotted using <code>bayesplot</code> package:</p>
 <pre class="r"><code>library(bayesplot)</code></pre>
 <pre><code>## This is bayesplot version 1.4.0</code></pre>
