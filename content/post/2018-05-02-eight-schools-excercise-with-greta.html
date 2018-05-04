@@ -52,13 +52,12 @@ sigma &lt;- as_data(sigma)</code></pre>
 </div>
 <div id="model" class="section level2">
 <h2>Model</h2>
-<p><a href="http://www.stat.columbia.edu/~gelman/research/published/tau9.pdf">This is two-level normal model</a> of data <strong>y_ij</strong> with group-level effects <strong>alpha_j</strong> .</p>
-<p><span class="math display">\[y_{ij} \sim N(\mu + \alpha_j, \sigma_y)\]</span> <em>i=1,…,n_j</em>, <em>j=1,…,J</em><br />
-<span class="math display">\[\alpha_j \sim N(0, \sigma_\alpha)\]</span> <em>j=1,…,J</em></p>
-<p>We are going to use more efficient <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started">parametrisation</a>, where alpha_j is represented as product of two new parameters <strong>tau</strong> and <strong>eta</strong>:</p>
-<p><span class="math display">\[y_{ij} \sim N(\mu + \tau \times \eta_j, \sigma_y)\]</span> <em>i=1,…,n_j</em>, <em>j=1,…,J</em><br />
-<span class="math display">\[\eta_j \sim N(0, \sigma_eta)\]</span> <em>j=1,…,J</em></p>
-<p>(sorry for ugly math..)</p>
+<p><a href="http://www.stat.columbia.edu/~gelman/research/published/tau9.pdf">This is two-level normal model</a> of data <span class="math inline">\(y_ij\)</span> with group-level effects <span class="math inline">\(\alpha_j\)</span> .</p>
+<p><span class="math display">\[y_{ij} \sim N(\mu + \alpha_j, \sigma_y)~~i=1,\dots,~n_j, j=1,\dots,J\]</span><br />
+<span class="math display">\[\alpha_j \sim N(0, \sigma_\alpha)~~j=1,\dots,J\]</span></p>
+<p>We are going to use more efficient <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started">parametrisation</a>, where <span class="math inline">\(\alpha_j\)</span> is represented as product of two new parameters <span class="math inline">\(\tau\)</span> and <span class="math inline">\(\eta\)</span>:</p>
+<p><span class="math display">\[y_{ij} \sim N(\mu + \tau \times \eta_j, \sigma_y)~~i=1,\dots,~n_j, j=1,\dots,J\]</span><br />
+<span class="math display">\[\eta_j \sim N(0, \sigma_eta)~~j=1,\dots,J\]</span></p>
 </div>
 <div id="priors" class="section level2">
 <h2>Priors</h2>
@@ -106,46 +105,46 @@ render_graph(gr)</code></pre>
 ##    plus standard error of the mean:
 ## 
 ##            Mean     SD Naive SE Time-series SE
-## mu      4.32650 3.4777  0.10997        0.04790
-## tau     3.55602 2.9950  0.09471        0.07615
-## eta1    0.31449 0.9822  0.03106        0.02341
-## eta2    0.12574 0.9604  0.03037        0.01354
-## eta3   -0.07218 0.9597  0.03035        0.01899
-## eta4    0.06650 0.9700  0.03068        0.01303
-## eta5   -0.14850 0.9450  0.02988        0.01341
-## eta6   -0.08699 0.9711  0.03071        0.01660
-## eta7    0.36703 0.9680  0.03061        0.02050
-## eta8    0.03155 0.9747  0.03082        0.04845
-## theta1  6.02775 5.6263  0.17792        0.13331
-## theta2  4.73805 4.6828  0.14808        0.08829
-## theta3  3.87346 5.0487  0.15965        0.11534
-## theta4  4.67178 4.7475  0.15013        0.09697
-## theta5  3.60640 4.8344  0.15288        0.10392
-## theta6  3.99449 5.0303  0.15907        0.10876
-## theta7  6.15284 5.1723  0.16356        0.11922
-## theta8  4.60295 5.2956  0.16746        0.18187
+## mu      4.36370 3.3184  0.10494        0.05141
+## tau     3.50257 3.1679  0.10018        0.35683
+## eta1    0.29603 0.9188  0.02905        0.03021
+## eta2    0.15130 0.8818  0.02789        0.02225
+## eta3   -0.05955 0.9624  0.03043        0.03107
+## eta4    0.05366 0.8945  0.02829        0.02070
+## eta5   -0.15363 0.9193  0.02907        0.03171
+## eta6   -0.07532 0.9498  0.03004        0.01399
+## eta7    0.35685 0.9416  0.02978        0.03034
+## eta8    0.13894 0.9627  0.03044        0.02426
+## theta1  6.15519 5.6841  0.17975        0.21139
+## theta2  4.99836 4.5533  0.14399        0.08183
+## theta3  4.04913 4.9821  0.15755        0.17047
+## theta4  4.69458 4.6120  0.14584        0.07620
+## theta5  3.63468 4.6571  0.14727        0.13448
+## theta6  3.98083 5.0202  0.15875        0.11400
+## theta7  6.29936 5.3118  0.16797        0.19241
+## theta8  4.97647 5.3321  0.16862        0.09913
 ## 
 ## 2. Quantiles for each variable:
 ## 
-##           2.5%     25%      50%    75%  97.5%
-## mu     -2.1641  1.7856  4.47045 6.8289 11.031
-## tau     0.1332  1.3602  2.80674 5.1343 10.875
-## eta1   -1.6118 -0.3385  0.32551 0.9863  2.127
-## eta2   -1.7730 -0.5492  0.12355 0.8171  1.932
-## eta3   -1.8823 -0.7486 -0.07803 0.5614  1.774
-## eta4   -1.9129 -0.5558  0.05469 0.6975  1.975
-## eta5   -1.9646 -0.8133 -0.11725 0.4426  1.757
-## eta6   -1.9461 -0.7379 -0.09740 0.5760  1.808
-## eta7   -1.6421 -0.2865  0.39259 1.0271  2.133
-## eta8   -1.9361 -0.6151  0.02038 0.7209  1.906
-## theta1 -3.3524  2.3628  5.76095 8.8553 19.643
-## theta2 -5.0904  1.7328  4.73065 7.7571 13.697
-## theta3 -6.9793  0.7465  4.06884 7.0281 13.299
-## theta4 -4.9009  1.6609  4.76036 7.4958 13.909
-## theta5 -6.6298  0.7306  3.83300 6.6707 12.760
-## theta6 -6.8794  0.8346  4.13003 7.0634 13.776
-## theta7 -2.4360  2.5638  5.66612 9.3349 17.704
-## theta8 -5.5710  1.3723  4.52083 7.6786 14.596</code></pre>
+##            2.5%     25%      50%    75%  97.5%
+## mu     -2.31122  2.2560  4.33692 6.5561 11.164
+## tau     0.02778  1.0467  2.81416 5.1032 11.664
+## eta1   -1.44115 -0.3289  0.27336 0.9338  2.091
+## eta2   -1.65204 -0.4649  0.22013 0.7535  1.850
+## eta3   -1.90598 -0.7132 -0.04901 0.5343  1.877
+## eta4   -1.68009 -0.5392  0.06667 0.6893  1.747
+## eta5   -1.96976 -0.7652 -0.13945 0.4195  1.684
+## eta6   -1.86807 -0.7547 -0.05544 0.6120  1.712
+## eta7   -1.50237 -0.2730  0.34093 1.0413  2.064
+## eta8   -1.67739 -0.5388  0.14972 0.7952  2.015
+## theta1 -3.46941  2.7981  5.58982 8.7139 19.467
+## theta2 -3.68412  2.0514  4.79466 7.8221 14.323
+## theta3 -6.34771  1.1306  4.35801 7.0174 13.294
+## theta4 -4.41621  2.0587  4.49617 7.5106 14.068
+## theta5 -6.38756  1.0031  3.81691 6.5375 12.027
+## theta6 -6.75651  1.0966  4.04573 7.0255 13.754
+## theta7 -3.21940  2.8882  5.79979 8.8860 18.139
+## theta8 -5.89734  1.9780  4.80303 8.1593 15.624</code></pre>
 <p>MCMC chain and the parameter estimates can be plotted using <code>bayesplot</code> package:</p>
 <pre class="r"><code>library(bayesplot)</code></pre>
 <pre><code>## This is bayesplot version 1.4.0</code></pre>
