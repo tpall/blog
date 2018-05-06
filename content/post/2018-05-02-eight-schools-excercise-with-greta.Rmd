@@ -55,7 +55,7 @@ $$\alpha_j \sim N(0, \sigma_\alpha)~~j=1,\dots,J$$
 We are going to use more efficient [parametrisation](https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started), where $\alpha_j$ is represented as product of two new parameters $\tau$ and $\eta$:
 
 $$y_{ij} \sim N(\mu + \tau \times \eta_j, \sigma_y)~~i=1,\dots,~n_j, j=1,\dots,J$$  
-$$\eta_j \sim N(0, \sigma_eta)~~j=1,\dots,J$$
+$$\eta_j \sim N(0, \sigma_{\eta})~~j=1,\dots,J$$
 
 ## Priors
 
